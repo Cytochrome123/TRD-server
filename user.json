@@ -1,0 +1,185 @@
+[
+    {
+      "firstName": "john",
+      "lastName": "doe",
+      "email": "johndoe@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "1234567890",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [
+        {
+          "courseID": "615e29c7a8b1e5e3f243e624",
+          "progress": "not-started"
+        }
+      ],
+      "createdDate": 1654321987654,
+      "lastLogin": null
+    },
+    {
+      "firstName": "jane",
+      "lastName": "smith",
+      "email": "janesmith@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "9876543210",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [
+        {
+          "courseID": "615e29c7a8b1e5e3f243e625",
+          "progress": "in-progress"
+        },
+        {
+          "courseID": "615e29c7a8b1e5e3f243e627",
+          "progress": "completed"
+        }
+      ],
+      "createdDate": 1654321987655,
+      "lastLogin": null
+    },
+    {
+      "firstName": "alex",
+      "lastName": "smith",
+      "email": "alexsmith@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "5678901234",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [
+        {
+          "courseID": "615e29c7a8b1e5e3f243e626",
+          "progress": "not-started"
+        }
+      ],
+      "createdDate": 1654321987656,
+      "lastLogin": null
+    },
+    {
+      "firstName": "emma",
+      "lastName": "wilson",
+      "email": "emmawilson@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "0987654321",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [],
+      "createdDate": 1654321987657,
+      "lastLogin": null
+    },
+    {
+      "firstName": "michael",
+      "lastName": "brown",
+      "email": "michaelbrown@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "4321098765",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [
+        {
+          "courseID": "615e29c7a8b1e5e3f243e628",
+          "progress": "not-started"
+        }
+      ],
+      "createdDate": 1654321987658,
+      "lastLogin": null
+    },
+    {
+      "firstName": "sarah",
+      "lastName": "miller",
+      "email": "sarahmiller@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "5678904321",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [
+        {
+          "courseID": "615e29c7a8b1e5e3f243e629",
+          "progress": "in-progress"
+        }
+      ],
+      "createdDate": 1654321987659,
+      "lastLogin": null
+    },
+    {
+      "firstName": "david",
+      "lastName": "lee",
+      "email": "davidlee@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "1234509876",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [
+        {
+          "courseID": "615e29c7a8b1e5e3f243e630",
+          "progress": "completed"
+        }
+      ],
+      "createdDate": 1654321987660,
+      "lastLogin": null
+    },
+    {
+      "firstName": "olivia",
+      "lastName": "thomas",
+      "email": "oliviathomas@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "6543210987",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [],
+      "createdDate": 1654321987661,
+      "lastLogin": null
+    },
+    {
+      "firstName": "william",
+      "lastName": "martin",
+      "email": "williammartin@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "9012345678",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [
+        {
+          "courseID": "615e29c7a8b1e5e3f243e631",
+          "progress": "not-started"
+        },
+        {
+          "courseID": "615e29c7a8b1e5e3f243e632",
+          "progress": "in-progress"
+        }
+      ],
+      "createdDate": 1654321987662,
+      "lastLogin": null
+    },
+    {
+      "firstName": "mia",
+      "lastName": "jackson",
+      "email": "miajackson@example.com",
+      "password": "$2a$10$lzwc9sov4n7yWNVvceXRpOgzG4bWyWleN.fqOEcoZvwDAC1bSGSI6",
+      "phoneNumber": "8901234567",
+      "userType": "user",
+      "resetToken": null,
+      "resetTokenExpiration": null,
+      "courses": [
+        {
+          "courseID": "615e29c7a8b1e5e3f243e633",
+          "progress": "completed"
+        },
+        {
+          "courseID": "615e29c7a8b1e5e3f243e634",
+          "progress": "not-started"
+        }
+      ],
+      "createdDate": 1654321987663,
+      "lastLogin": null
+    }
+]
+  
