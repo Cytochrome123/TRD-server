@@ -6,8 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js",
-    "instal": "npm install",
-    "build": "npm run instal",
+    "build": "npm install",
     "dev": "nodemon app.js"
   },
   "author": "Hud",
