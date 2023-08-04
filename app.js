@@ -30,7 +30,7 @@ app.use(cors({
 })); 
 app.use(session({
     secret: 'TRD',
-    resave: true,
+    resave: false,
     saveUninitialized: false,
     cookie: { secure: true }
 }))
