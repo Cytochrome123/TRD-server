@@ -5,7 +5,7 @@ const progressEnum = [ 'Not-started', 'In-progress', 'Completed', ]
 
 const userSchema = new mongoose.Schema({
     firstName: { type: String, required: true, index: true },
-	lastName: { type: String, required: true, lowercase: true, index: true },
+	lastName: { type: String, required: true, index: true },
 	email: { type: String, required: true },
 	password: { type: String, required: [true, 'Password required'] , default: null },
 	phoneNumber: { type: String, required: true },
