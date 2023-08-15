@@ -187,7 +187,7 @@ app.get('/api/courses', async (req, res) => {
     }
 });
 
-app.get('/api/course/:id', (req, res) => {
+app.get('/course/:id', (req, res) => {
     try {
         // const my_details = req.user;
         const { id } = req.params;
@@ -221,7 +221,7 @@ app.post('/api/message', (req, res) => {
 })
 
 // BOTH                         ---------     CHECK THIS AGAIN - should be for both admin and instructor, so the poplayed field should be instructors
-app.get('/course/:id', authenticate, (req, res) => {
+app.get('/api/course/:id', authenticate, (req, res) => {
     try {
         const my_details = req.user;
         const { id } = req.params;
@@ -234,11 +234,11 @@ app.get('/course/:id', authenticate, (req, res) => {
         isAdmin ? projection = {} : projection = { instructorsID: 0, capacity: 0, enrolled: 0, enrollment_count: 0 };
         isAdmin ?
             populateOptions = {
-                path: 'enrolled.userID',
+                path: 'enrolled.userID instructors.instructor',
                 model: 'User'
             } :
             populateOptions = {
-                path: 'enrolled.userID',
+                path: 'enrolled.userID instructors.instructor',
                 select: 'firstName lastName email phoneNumber',
                 model: 'User'
             }
@@ -272,8 +272,8 @@ app.post('/api/course', authenticate, async (req, res) => {
         console.log(my_details)
         const courseDetails = req.body;
         if (my_details.userType === 'admin') {
-            const exists = await Course.findOne({ name: courseDetails.name })
-            if (exists) return res.status(400).json({ msg: 'Course with the same name exists' })
+            const exists = await Course.findOne({ title: courseDetails.title })
+            if (exists) return res.status(400).json({ msg: 'Course with the same title exists' })
             console.log('in')
             courseDetails['creatorID'] = my_details.id;
             courseDetails['status'] = 'Upcoming';
@@ -440,7 +440,7 @@ app.put('/api/course/:id/status', authenticate, (req, res, next) => {
                         to: student.userID.email,
                         from: 'hoismail2017@gmail.com',
                         subject: `The wait has finally ended`,
-                        text: `The course titled ${populated.name} has already begun, log onto the portal to get started`,
+                        text: `The course titled ${populated.title} has already begun, log onto the portal to get started`,
                     };
                     if (status === 'In progress') {
                         sgMail.send(msg)
@@ -458,7 +458,7 @@ app.put('/api/course/:id/status', authenticate, (req, res, next) => {
                             to: student.userID.email,
                             from: 'hoismail2017@gmail.com',
                             subject: `Congratulations!!!`,
-                            text: `The course titled ${populated.name} has now ended, finish up all you need to do in order to be eligible to request for your certificate`,
+                            text: `The course titled ${populated.title} has now ended, finish up all you need to do in order to be eligible to request for your certificate`,
                         };
                         sgMail.send(msg)
                             .then(() => {
@@ -594,7 +594,7 @@ app.get('/api/student/:id', authenticate, async (req, res) => {
         const option = { lean: true, new: true };
         const populateOptions = {
             path: 'courses.courseID',
-            select: 'name description start_end end_date instructors duration location courseType createdDate',
+            select: 'title description start_end end_date instructors duration location courseType createdDate',
 
             populate: {
                 path: 'instructors.instructor',
@@ -626,7 +626,7 @@ app.patch('/api/instructor/:instructorID/deassign/course/:id', authenticate, asy
         // const condition = { 'instructors.instructorsID': instructorsID }
         // const condition = { instructors: { $where: }}
         // const condition = { instructors: { $in: [ instructorID ] } }
-        const projection = { name: 1, description: 1, instructors: 1 };
+        const projection = { title: 1, description: 1, instructors: 1 };
         const options = { lean: true };
 
         const course = await Course.findOne(condition, projection, options);
@@ -688,7 +688,7 @@ app.get('/api/assigned-course/:id/students', authenticate, async (req, res) => {
         const my_details = req.user;
         const { id } = req.params;
         const condition = { _id: id };
-        let projection = { name: 1, instructors: 1, status: 1, enrolled: 1, enrollment_count: 1 };
+        let projection = { title: 1, instructors: 1, status: 1, enrolled: 1, enrollment_count: 1 };
         const option = { lean: true };
 
         const populateOptions = {
@@ -721,7 +721,7 @@ app.get('/api/myData', authenticate, async (req, res) => {
         const option = { lean: true };
         const populateOptions = {
             path: 'courses.courseID',
-            select: 'name description start_end end_date instructors duration location courseType createdDate',
+            select: 'title description start_end end_date instructors duration location courseType createdDate',
 
             populate: {
                 path: 'instructors.instructor',
@@ -750,17 +750,19 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
         const { id } = req.params;
         const registerationDetails = req.body;
 
-        const projection = { password: 0, instructor_id: 0, capacity: 0, enrolled: 0, enrollment_count: 0 }
+        const projection = { password: 0, instructor_id: 0, capacity: 0, enrollment_count: 0 }
         const option = { lean: true };
-
+        console.log({my_details});
         const course = await Course.findById(id, projection, option);
+        console.log(course);
         if (course) {
             // if already registered for the coiurse
             //else
             //  push, update user into the course model
 
             // course.enrolled.map(registrations => )
-            const registered = my_details.courses.includes({ courseID: course._id })
+            const registered = course.enrolled.some(enrollment => enrollment.userID.equals(my_details.id));
+            console.log(registered);
             if (!registered) {
                 const register = {
                     $push: {
@@ -790,21 +792,21 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
                 }
                 return res.status(400).json({ data: { msg: 'Enrollment failed' } })
             }
-            return res.status(400).json({ data: { msg: 'You\'ve enrolledd for this before' } })
+            return res.status(400).json({ msg: 'You\'ve enrolledd for this before' })
         }
     } catch (err) {
-        res.status(500).json({ data: { msg: 'Server error', error: err.message } });
+        res.status(500).json({ msg: 'Server error', error: err.message });
     }
 });
 
 app.use((err, req, res, next) => res.status(500).json({ msg: err }));
 
 function authenticate(req, res, next) {
-    console.log(req.headers)
+    // console.log(req.headers)
     const authHeader = req.headers['authorization'];
-    console.log(authHeader)
+    // console.log(authHeader)
     const token = authHeader && authHeader.split(' ')[1];
-    console.log(token)
+    // console.log(token)
     if (token == null || token == undefined) return res.sendStatus(401).json({ msg: 'Unauthorized, login to view' })
 
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
