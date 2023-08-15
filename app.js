@@ -792,7 +792,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
                 }
                 return res.status(400).json({ data: { msg: 'Enrollment failed' } })
             }
-            return res.status(400).json({ msg: 'You\'ve enrolledd for this before' })
+            return res.status(400).json({ msg: 'You\'ve enrolledd for this before' });
         }
     } catch (err) {
         res.status(500).json({ msg: 'Server error', error: err.message });

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const userTypeEnum = [ 'admin', 'instructors', 'student', 'user' ];
-const progressEnum = [ 'Not-started', 'In-progress', 'Completed', ]
+const progressEnum = [ 'Not-started', 'In-progress', 'Completed', ];
 
 const userSchema = new mongoose.Schema({
     firstName: { type: String, required: true, index: true },
