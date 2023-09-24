@@ -4,22 +4,32 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const sgMail = require('@sendgrid/mail');
-sgMail.setApiKey(process.env.SG_API_KEY)
+sgMail.setApiKey(process.env.SG_API_KEY);
+const mongoose = require('mongoose');
+const axios = require('axios');
+const { validationResult } = require('express-validator');
 
 const User = require('./models/user');
 const Course = require('./models/course');
 const Message = require('./models/message');
 const { generateHashPassword, compareHashedPassword } = require('./config/factory');
+const GridFsConfig = require("./config/gridfs");
+const getGfs = require('./db/connection');
+const validation = require('./helper/validation');
 
 const app = express();
 
-const mongoose = require('mongoose');
 
-mongoose.connect(process.env.MONGO_URL)
-    .then(() => (console.log('Mongoose Connection is Successful')))
-    .catch(err => (console.log('Mongo error ', err)));
+// mongoose.connect(process.env.MONGO_URL)
+//     .then(() => (console.log('Mongoose Connection is Successful')))
+//     .catch(err => (console.log('Mongo error ', err)));
+let gfs;
+const getDB = async () => {
+    gfs = await getGfs();
+};
+getDB();
 
-app.use(express.json())
+app.use(express.json());
 // app.use(cors());
 app.use(cors({
     origin: 'http://localhost:3000',
@@ -33,14 +43,14 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { secure: true }
-}))
+}));
 
 const otpMap = new Map();
 
 
 app.get('/', (req, res) => {
     res.status(500).send('Hello')
-})
+});
 
 // Seed
 
@@ -51,7 +61,7 @@ app.post('/seed/user', async (req, res) => {
         if (newUser) console.log('Added')
     }
 
-})
+});
 
 app.post('/seed/course', async (req, res) => {
     const courseData = require('./course.json')
@@ -60,38 +70,53 @@ app.post('/seed/course', async (req, res) => {
         if (newCourse) console.log(' Course Added')
     }
 
-})
+});
 // AUTH
 
-app.post('/api/signup', async (req, res) => {
+app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, async (req, res) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ status: 'error', msg: errors.array() });
+        };
+        console.log('cb');
+        const files = req.files;
+        if (files.image[0].size > 5000000) {
+            const del = await deleteImage(res, gfs, files.image[0].id);
+            if (del) throw new Error(`${del} \n\n File shld not exceed 5mb`);
+            throw new Error('File shld not exceed 5mb');
+        };
+
+        req.body['image'] = { imageID: files.image[0].id };
+        req.body['image'] = { ...req.body.image, path: files.image[0].filename };
         const userDetails = req.body;
         let condition = { email: userDetails.email };
         let option = { lean: true };
 
-        let exists = await User.findOne(condition, option)
+        let exists = await User.findOne(condition, option);
         if (!exists) {
             userDetails.password = generateHashPassword(userDetails.password);
             new User(userDetails).save()
                 .then(user => {
-                    return res.json({ status: 201, msg: 'Account created!', user })
+                    return res.json({ status: 201, msg: 'Account created!', user });
                 })
                 .catch(err => {
                     return res.json({
                         status: 400,
                         msg: err
-                    })
+                    });
                 })
             return;
         }
+        await deleteImage(res, gfs, files.image[0].id);
         return res.json({
             status: 409,
             msg: 'Account already exists'
-        })
+        });
     } catch (err) {
-        return res.status(500).json({ msg: 'Server error', err: err.message })
+        return res.status(500).json({ msg: 'Server error', err: err.message });
     }
-})
+});
 
 app.post('/api/signin', async (req, res, next) => {
     try {
@@ -122,7 +147,7 @@ app.post('/api/signin', async (req, res, next) => {
                         return next(err);
                     });
 
-                const accessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '30m' })
+                const accessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5m' })
                 return res.status(200).json({ msg: 'Check your mail or phone for an OTP sent', accessToken });
             }
             return res.status(401).json({ msg: 'Incorrect password' })
@@ -161,7 +186,7 @@ app.post('/api/verify', authenticate, (req, res) => {
                 const newAccessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' });
                 return res.json({ msg: 'Login successful', newAccessToken, user });
             })
-            .catch(err => { 
+            .catch(err => {
                 res.status(404).json({ msg: 'User error', error: err.message });
             })
     } catch (err) {
@@ -218,9 +243,9 @@ app.post('/api/message', (req, res) => {
     } catch (err) {
         return res.status(500).json({ msg: 'Server error', err: err.message })
     }
-})
+});
 
-// BOTH                         ---------     CHECK THIS AGAIN - should be for both admin and instructor, so the poplayed field should be instructors
+// ADMIN                         ---------     CHECK THIS AGAIN - should be for both admin, so the poplayed field should be instructors
 app.get('/api/course/:id', authenticate, (req, res) => {
     try {
         const my_details = req.user;
@@ -262,16 +287,30 @@ app.patch('/api/user/:id/update', authenticate, async (req, res) => {
     } catch (err) {
         res.status(500).json({ data: { msg: 'Server error', error: err.message, status: err.status } });
     }
-})
+});
 
 //ADMIN ROUTES
 
-app.post('/api/course', authenticate, async (req, res) => {
+app.post('/api/course', GridFsConfig.uploadMiddleware, validation.course, authenticate, async (req, res) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ status: 'error', msg: errors.array() });
+        };
+
         const my_details = req.user;
         console.log(my_details)
-        const courseDetails = req.body;
         if (my_details.userType === 'admin') {
+            const files = req.files;
+            if (files.image[0].size > 5000000) {
+                const del = await deleteImage(res, gfs, files.image[0].id);
+                if (del) throw new Error(`${del} \n\n File shld not exceed 5mb`);
+                throw new Error('File shld not exceed 5mb');
+            };
+
+            req.body['image'] = { imageID: files.image[0].id };
+            req.body['image'] = { ...req.body.image, path: files.image[0].filename };
+            const courseDetails = req.body;
             const exists = await Course.findOne({ title: courseDetails.title })
             if (exists) return res.status(400).json({ msg: 'Course with the same title exists' })
             console.log('in')
@@ -316,102 +355,41 @@ app.get('/api/created-courses', authenticate, async (req, res) => {
 app.patch('/api/course/:id/assign', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType === 'admin') {
-            const { id } = req.params;
-            // [ 'me', 'you', 'them']
-            const { instructors } = req.body;
-            let condition = { _id: id, creatorID: new mongoose.Types.ObjectId(my_details.id) }
-            let projection = {};
-            let options = { lean: true, new: true };
-            Course.findOne(condition)
-                .then(async course => {
-                    const errors = [];
-                    const check = instructors.map(async (instructorId) => {
-                        // const user = await User.findById(instructorId);
-                        User.findById(instructorId)
-                            .then(user => {
-                                const name = `${user.firstName} ${user.lastName}`;
-                                if (course.instructors.some((instructor) => instructor.instructorsID.equals(instructorId))) {
-                                    errors.push(`This ${instructorId} - ${name} has already been assigned to this course, effect beforre you can continie`)
-                                };
+        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access', err });
+        const { id } = req.params;
+        const { instructors } = req.body;
+        let condition = { _id: id, creatorID: new mongoose.Types.ObjectId(my_details.id) }
+        let projection = {};
+        let options = { lean: true, new: true };
 
-                                if (errors.length > 0) {
-                                    return res.status(400).json({ data: { msg: 'Assign failed', errors } });
-                                };
+        const course = await Course.findOne(condition, projection, options);
+        if (!course) return res.status(404).json({ msg: 'Course not found', err: err.message });
+        const errors = [];
+        let user;
+        for (let i = 0; i < instructors.length; i++) {
+            user = await User.findById(instructors[i].instructor);
+            if (!user) return res.status(405).json({ msg: `${instructors[i].instructor}'s account not found, a valid instructor's account is needed` });
+            break;
+        };
 
-                                // const assign = {
-                                //     $push: {
-                                //         instructors: {
-                                //           $each: instructors.map((instructor) => ({ instructorID: instructor })),
-                                //         },
-                                //     },
-                                // };
-
-                                const assign = {
-                                    $push: {
-                                        instructors: {
-                                            $each: instructors.map((instructor) => (instructor)),
-                                        },
-                                    },
-                                };
-
-                                Course.findOneAndUpdate(condition, assign, options)
-                                    .then(assigned => (res.status(200).json({ data: { msg: 'Intructor(s) assigned successfully' } })))
-                                    .catch(err => (res.status(400).json({ data: { msg: 'Assign failed', err } })));
-                            })
-                            .catch(err => { errors.push(`${instructorId}'s account not found, an account needed`, err) })
-
-                        // if (!user) errors.push(`${instructorId}'s account not found, an account needed`, err)
-                        // const name = `${user.firstName} ${user.lastName}`
-
-
-                        // if (!user) return res.status(404).json({ data: { msg: `${instructorId}'s account not found, an account needed`, err } });
-                        // if (course.instructors.some((instructor) => instructor.instructorID.equals(instructorId))) {
-                        //     return res.status(400).json({ error: `This instructor has already been assigned to this course` });
-                        // }
-                        // return;
-                    });
-
-                    // await Promise.all(check);
-
-
-
-                    // for (const instructorId of instructors) {
-                    //     const user = await User.findById(instructorId);
-                    //     if (!user) {
-                    //       return res.status(400).json({ error: `${instructorId}'s account not found, an account is needed` });
-                    //     }
-                    //     if (course.instructors.some((instructor) => instructor.instructorsID.equals(instructorId))) {
-                    //       return res.status(400).json({ error: 'This instructor has already been assigned to this course' });
-                    //     }
-                    // }
-                    // Wait for all instructor ID validations to complete
-
-
-
-
-
-                    // OOORRRR --------------------------------------------------------------
-
-                    // Push each instructor ID into the instructors array
-                    // instructors.forEach((instructor) => {
-                    //     course.instructors.push({ instructorsID: instructor });
-                    // });
-
-                    // // Save the updated course
-                    // await course.save()
-                    // .then(assigned => (res.status(200).json({ data: { msg: 'Intructor(s) assigned successfully' } })))
-                    // .catch(err => (res.status(400).json({ data: { msg: 'Assign failed', err } })));
-                    return;
-                })
-                .catch(err => (res.status(404).json({ msg: 'Course not found', err })));
-            return;
-        }
-        return res.status(403).json({ msg: 'Request admin access', err });
-    } catch (err) {
-        res.status(500).json({ msg: 'Server error', err });
+        const name = `${user.firstName} ${user.lastName}`;
+        if (course.instructors.some((instruct) => instruct.instructor.equals(instructors[0].instructor))) {
+            return res.status(400).json({ msg: `This ${instructors[0].instructor} - ${name} has already been assigned to this course, effect beforre you can continie` });
+        };
+        const assign = {
+            $push: {
+                instructors: {
+                    $each: instructors.map((instructor) => ({ instructor: instructor.instructor })),
+                },
+            },
+        };
+        const assigned = await Course.findOneAndUpdate(condition, assign, options)
+        if (!assigned) throw new Error('Assign failed');
+        res.status(200).json({ data: { msg: 'Intructor(s) assigned successfully', assigned } })
+    } catch (error) {
+        res.status(500).json({ msg: 'Server error', err: error.message });
     }
-})
+});
 
 app.put('/api/course/:id/status', authenticate, (req, res, next) => {
     try {
@@ -486,7 +464,7 @@ app.put('/api/course/:id/status', authenticate, (req, res, next) => {
 app.get('/api/users', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (!my_details === 'admin') return res.status(403).json({ msg: 'Request admin access' })
+        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access' })
 
         let aggregatePipeline = [
             // { $match: { userType: { $ne: 'admin'} }},
@@ -516,7 +494,7 @@ app.get('/api/users', authenticate, async (req, res) => {
 app.get('/api/user/:id', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (!my_details === 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
 
         const { id } = req.params;
         const condition = { _id: id };
@@ -534,7 +512,7 @@ app.get('/api/user/:id', authenticate, async (req, res) => {
 app.get('/api/instructors', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (!my_details === 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
 
         const condition = { userType: 'instructor' };
         const projection = { password: 0 };
@@ -551,16 +529,14 @@ app.get('/api/instructors', authenticate, async (req, res) => {
 app.get('/api/instructor/:id', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (!my_details === 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
 
         const { id } = req.params;
-        const condition = { _id: id };
-        const projection = {};
-        const option = { lean: true, new: true };
 
         const instructor = await User.findById(id);
-        if (instructor) return res.status(200).json({ data: { msg: `${instructor.firstName}'s details`, instructor } });
-        return res.status(400).json({ data: { msg: `Error` } });
+        if (!instructor) return res.status(400).json({ data: { msg: `Error` } });
+        if (instructor.userType !== 'instructor') return res.status(400).json({ data: { msg: `User not an instructor` } });
+        return res.status(200).json({ data: { msg: `${instructor.firstName}'s details`, instructor } });
     } catch (err) {
         res.status(500).json({ data: { msg: 'Server error', error: err.message } });
     }
@@ -569,7 +545,7 @@ app.get('/api/instructor/:id', authenticate, async (req, res) => {
 app.get('/api/students', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (!my_details === 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
 
         const condition = { userType: 'student' };
         const projection = { password: 0 };
@@ -586,7 +562,7 @@ app.get('/api/students', authenticate, async (req, res) => {
 app.get('/api/student/:id', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (!my_details === 'admin' || !my_details === 'instructor') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin' || my_details.userType !== 'instructor') return res.status(400).json({ msg: 'Request admin access' });
 
         const { id } = req.params;
         const condition = { _id: id };
@@ -599,7 +575,7 @@ app.get('/api/student/:id', authenticate, async (req, res) => {
             populate: {
                 path: 'instructors.instructor',
                 select: 'firstName lastName email phoneNumber',
-                model: 'User' 
+                model: 'User'
             },
 
             model: 'Course'
@@ -643,7 +619,7 @@ app.patch('/api/instructor/:instructorID/deassign/course/:id', authenticate, asy
     } catch (err) {
         res.status(500).json({ data: { msg: 'Server error', error: err.message } });
     }
-})
+});
 
 // app.get('/api/students')
 
@@ -652,7 +628,7 @@ app.patch('/api/instructor/:instructorID/deassign/course/:id', authenticate, asy
 app.delete('/api/user/:id/delete', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (!my_details === 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
 
         const { id } = req.params;
 
@@ -663,13 +639,16 @@ app.delete('/api/user/:id/delete', authenticate, async (req, res) => {
     } catch (err) {
         res.status(500).json({ data: { msg: 'Server error', error: err.message } });
     }
-})
+});
 
 // INSTRUCTOR ROUTES
 
 app.get('/api/assigned-courses', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
+        console.log(my_details)
+        if (my_details.userType !== 'instructor') return res.status(400).json({ msg: 'For innstructors only' });
+
         const condition = { instructors: { $elemMatch: { instructor: my_details.id } } };
         // const condition = { location: 'Online' };
         const projection = {};
@@ -682,13 +661,16 @@ app.get('/api/assigned-courses', authenticate, async (req, res) => {
     } catch (err) {
         res.status(500).json({ data: { msg: 'Server error', error: err.message } });
     }
-})
+});
+
 app.get('/api/assigned-course/:id/students', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
+        if (my_details.userType !== 'instructor') return res.status(400).json({ msg: 'For innstructors only' });
+
         const { id } = req.params;
         const condition = { _id: id };
-        let projection = { title: 1, instructors: 1, status: 1, enrolled: 1, enrollment_count: 1 };
+        let projection = { title: 1, status: 1, enrolled: 1, enrollment_count: 1 };
         const option = { lean: true };
 
         const populateOptions = {
@@ -710,7 +692,7 @@ app.get('/api/assigned-course/:id/students', authenticate, async (req, res) => {
     } catch (err) {
         res.status(500).json({ data: { msg: 'Server error', error: err.message } });
     }
-})
+});
 
 // Student routes
 
@@ -752,7 +734,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
 
         const projection = { password: 0, instructor_id: 0, capacity: 0, enrollment_count: 0 }
         const option = { lean: true };
-        console.log({my_details});
+        console.log({ my_details });
         const course = await Course.findById(id, projection, option);
         console.log(course);
         if (course) {
@@ -763,6 +745,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
             // course.enrolled.map(registrations => )
             const registered = course.enrolled.some(enrollment => enrollment.userID.equals(my_details.id));
             console.log(registered);
+            // THIS LOGIC IS BAD, UPDATING COURSE TWICE AT TWO DIFFERENT INSTEAD OF JUST ONCE AND CALLING .SAVE() on the model
             if (!registered) {
                 const register = {
                     $push: {
@@ -786,7 +769,11 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
                 if (updateEnrollmentList) {
                     // need to use projection and populate the course field                    
                     User.findByIdAndUpdate(my_details.id, addToMyCourseList, options)
-                        .then(updated => (res.status(201).json({ data: { msg: 'Course enrollment sucessfull', courseList: updated } })))
+                        .then(async updated => {
+                            updateEnrollmentList.enrollment_count++;
+                            await updateEnrollmentList.save();
+                            return res.status(201).json({ data: { msg: 'Course enrollment sucessfull', courseList: updated } })
+                        })
                         .catch(err => (res.status(400).json({ data: { msg: err } })));
                     return;
                 }
@@ -795,6 +782,32 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
             return res.status(400).json({ msg: 'You\'ve enrolledd for this before' });
         }
     } catch (err) {
+        res.status(500).json({ msg: 'Server error', error: err.message });
+    }
+});
+
+// Check transaction status      https://remitademo.net/payment/v1/payment/query/{{transactionId}}
+app.post('/api/payment/status', async (req, res) => {
+    try {
+        const { transactionId } = req.body;
+
+        const config = {
+            method: 'get',
+            maxBodyLength: Infinity,
+            url: 'https://remitademo.net/payment/v1/payment/query/{{transactionId}}',
+            headers: {
+                'publicKey': 'QzAwMDAyNzEyNTl8MTEwNjE4NjF8OWZjOWYwNmMyZDk3MDRhYWM3YThiOThlNTNjZTE3ZjYxOTY5NDdmZWE1YzU3NDc0ZjE2ZDZjNTg1YWYxNWY3NWM4ZjMzNzZhNjNhZWZlOWQwNmJhNTFkMjIxYTRiMjYzZDkzNGQ3NTUxNDIxYWNlOGY4ZWEyODY3ZjlhNGUwYTY=',
+                'Content-Type': 'application/json',
+                //   'TXN_HASH': '{{hash}}'
+                'TXN_HASH': `${transactionId}${process.env.secretKey}`
+            }
+        };
+
+        const status = await axios(config);
+        if (!status) throw new Error('Error getting payment status');
+        return res.status(200).json({ msg: 'Payment status', status });
+
+    } catch (error) {
         res.status(500).json({ msg: 'Server error', error: err.message });
     }
 });
@@ -810,10 +823,22 @@ function authenticate(req, res, next) {
     if (token == null || token == undefined) return res.sendStatus(401).json({ msg: 'Unauthorized, login to view' })
 
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ msg: 'Unauthorized, login to view' })
+        if (err) return res.status(403).json({ msg: 'Unauthorized, login to view, token expired' })
         req.user = user;
-        next()
+        next();
     })
+};
+
+async function deleteImage(res, gfs, id) {
+    if (!id || id === 'undefined') throw new Error('No image ID');
+    // const _id = new mongoose.Types.ObjectId(id);
+    const _id = id;
+    const del = await gfs.delete(_id);
+    // if(!del) throw new Error('Error deleting uploaded file');
+    if (!del) return 'Error deleting uploaded file';
+    console.log('file deleted');
+    return 'File deleted'
+
 }
 
 app.listen(process.env.PORT || 5001, err => {

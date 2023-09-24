@@ -6,7 +6,11 @@ const progressEnum = [ 'Not-started', 'In-progress', 'Completed', ]
 
 const courseSchema = new mongoose.Schema({
     creatorID: { type: mongoose.Types.ObjectId, required: true, ref: 'User' },
-	name: { type: String, required: true },
+    image: {
+        imageID: { type: String, default: null },
+		path: String,
+    },
+	title: { type: String, required: true },
     description: { type: String, required: true },
     // instructors: [{ instructorID: { type: mongoose.Types.ObjectId, ref: 'User' } }],
     instructors: [ {

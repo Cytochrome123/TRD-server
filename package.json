@@ -30,6 +30,8 @@
     "passport-local": "^1.0.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.14",
+    "@types/express-session": "^1.17.7",
     "nodemon": "^2.0.22"
   }
 }
