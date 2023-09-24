@@ -32,7 +32,7 @@ getDB();
 app.use(express.json());
 // app.use(cors());
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true, // allow session cookie from browser to pass through
     optionsSuccessStatus: 200,
