@@ -830,14 +830,27 @@ function authenticate(req, res, next) {
 };
 
 async function deleteImage(res, gfs, id) {
-    if (!id || id === 'undefined') throw new Error('No image ID');
-    // const _id = new mongoose.Types.ObjectId(id);
-    const _id = id;
-    const del = await gfs.delete(_id);
-    // if(!del) throw new Error('Error deleting uploaded file');
-    if (!del) return 'Error deleting uploaded file';
-    console.log('file deleted');
-    return 'File deleted'
+    try {
+        if (!id || id === 'undefined') throw new Error('No image ID');
+        // const _id = new mongoose.Types.ObjectId(id);
+        const _id = id;
+        gfs.delete(_id)
+        .then(del => {
+            console.log('file deleted');
+        return 'File deleted'
+        })
+        .catch(error => {
+            throw new Error('Error deleting uploaded file', error);
+        })
+        // const del = await gfs.delete(_id)
+        // // if(!del) throw new Error('Error deleting uploaded file');
+        // if (!del) return 'Error deleting uploaded file';
+        // console.log('file deleted');
+        // return 'File deleted'
+    } catch (error) {
+console.log({error}, 'newErr')
+    }
+
 
 }
 
