@@ -812,6 +812,28 @@ app.post('/api/payment/status', async (req, res) => {
     }
 });
 
+// GEt uploaded file
+app.get('/api/file/:filename', async (req, res) => {
+    try {
+        const { filename } = req.params;
+        
+        gfs.find({filename: filename}).toArray((err, file) => {
+            if(err) {
+                // throw new Error(err.message);
+                res.status(400).json({msg: err.message});
+            } else {
+                console.log(file)
+                const type = file[0].contentType;
+                res.set("Content-Type", type);
+            }
+            
+        });
+        gfs.openDownloadStreamByName(filename).pipe(res);
+    } catch (err) {
+        res.status(err.status || 500).json({ msg: 'Server error', err: err.message });
+    }
+})
+
 app.use((err, req, res, next) => res.status(500).json({ msg: err }));
 
 function authenticate(req, res, next) {
@@ -848,7 +870,8 @@ async function deleteImage(res, gfs, id) {
         // console.log('file deleted');
         // return 'File deleted'
     } catch (error) {
-console.log({error}, 'newErr')
+        console.log(error, 'newErr');
+        return error.message;
     }
 
 
