@@ -536,9 +536,9 @@ app.get('/api/instructor/:id', authenticate, async (req, res) => {
         const instructor = await User.findById(id);
         if (!instructor) return res.status(400).json({ data: { msg: `Error` } });
         if (instructor.userType !== 'instructor') return res.status(400).json({ data: { msg: `User not an instructor` } });
-        return res.status(200).json({ data: { msg: `${instructor.firstName}'s details`, instructor } });
+        return res.status(200).json({ msg: `${instructor.firstName}'s details`, instructor });
     } catch (err) {
-        res.status(500).json({ data: { msg: 'Server error', error: err.message } });
+        res.status(500).json({ msg: 'Server error', error: err.message });
     }
 });
 
@@ -615,9 +615,9 @@ app.patch('/api/instructor/:instructorID/deassign/course/:id', authenticate, asy
             // if(removed) return res.status(200).json({ data: { msg: 'Deassigned' } });
             // return res.status(400).json({ data: { msg: 'Try again' } });
         }
-        return res.status(400).json({ data: { msg: 'Course not found' } });
+        return res.status(400).json({ msg: 'Course not found' });
     } catch (err) {
-        res.status(500).json({ data: { msg: 'Server error', error: err.message } });
+        res.status(500).json({ msg: 'Server error', error: err.message });
     }
 });
 
