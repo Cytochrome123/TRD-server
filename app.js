@@ -494,7 +494,7 @@ app.get('/api/users', authenticate, async (req, res) => {
 app.get('/api/user/:id', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access' });
 
         const { id } = req.params;
         const condition = { _id: id };
@@ -512,7 +512,7 @@ app.get('/api/user/:id', authenticate, async (req, res) => {
 app.get('/api/instructors', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access' });
 
         const condition = { userType: 'instructor' };
         const projection = { password: 0 };
@@ -529,7 +529,7 @@ app.get('/api/instructors', authenticate, async (req, res) => {
 app.get('/api/instructor/:id', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access' });
 
         const { id } = req.params;
 
@@ -545,7 +545,7 @@ app.get('/api/instructor/:id', authenticate, async (req, res) => {
 app.get('/api/students', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access' });
 
         const condition = { userType: 'student' };
         const projection = { password: 0 };
@@ -562,7 +562,7 @@ app.get('/api/students', authenticate, async (req, res) => {
 app.get('/api/student/:id', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'admin' && my_details.userType !== 'instructor') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin' && my_details.userType !== 'instructor') return res.status(403).json({ msg: 'Request admin access' });
 
         const { id } = req.params;
         const condition = { _id: id };
@@ -592,7 +592,7 @@ app.get('/api/student/:id', authenticate, async (req, res) => {
 app.patch('/api/instructor/:instructorID/deassign/course/:id', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (!my_details === 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (!my_details === 'admin') return res.status(403).json({ msg: 'Request admin access' });
 
         const { instructorID, id } = req.params;
         // const js = instructors.includes({})
@@ -628,7 +628,7 @@ app.patch('/api/instructor/:instructorID/deassign/course/:id', authenticate, asy
 app.delete('/api/user/:id/delete', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'admin') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access' });
 
         const { id } = req.params;
 
@@ -647,7 +647,7 @@ app.get('/api/assigned-courses', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
         console.log(my_details)
-        if (my_details.userType !== 'instructor') return res.status(400).json({ msg: 'For innstructors only' });
+        if (my_details.userType !== 'instructor') return res.status(403).json({ msg: 'For innstructors only' });
 
         const condition = { instructors: { $elemMatch: { instructor: my_details.id } } };
         // const condition = { location: 'Online' };
@@ -666,7 +666,7 @@ app.get('/api/assigned-courses', authenticate, async (req, res) => {
 app.get('/api/assigned-course/:id/students', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'instructor') return res.status(400).json({ msg: 'For innstructors only' });
+        if (my_details.userType !== 'instructor') return res.status(403).json({ msg: 'For innstructors only' });
 
         const { id } = req.params;
         const condition = { _id: id };
