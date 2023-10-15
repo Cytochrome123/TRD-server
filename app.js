@@ -562,7 +562,7 @@ app.get('/api/students', authenticate, async (req, res) => {
 app.get('/api/student/:id', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'admin' || my_details.userType !== 'instructor') return res.status(400).json({ msg: 'Request admin access' });
+        if (my_details.userType !== 'admin' && my_details.userType !== 'instructor') return res.status(400).json({ msg: 'Request admin access' });
 
         const { id } = req.params;
         const condition = { _id: id };
