@@ -464,7 +464,7 @@ app.put('/api/course/:id/status', authenticate, (req, res, next) => {
 app.get('/api/users', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access' })
+        if (my_details.userType !== 'admin' && my_details.userType !== 'instructor') return res.status(403).json({ msg: 'Request admin access' })
 
         let aggregatePipeline = [
             // { $match: { userType: { $ne: 'admin'} }},
@@ -487,7 +487,7 @@ app.get('/api/users', authenticate, async (req, res) => {
         return res.status(400).json({ msg: 'Error comipling users', users })
 
     } catch (err) {
-        res.status(500).json({ data: { msg: 'Server error', error: err.message } });
+        res.status(500).json({ msg: 'Server error', error: err.message });
     }
 });
 
@@ -583,7 +583,7 @@ app.get('/api/student/:id', authenticate, async (req, res) => {
 
         const student = await User.findById(id).populate(populateOptions).exec()
         if (student) return res.status(200).json({ msg: `${student.firstName}'s details`, student });
-        return res.status(400).json({ msg: `Error` });
+        return res.status(400).json({ msg: `Error, not found` });
     } catch (err) {
         res.status(500).json({ msg: 'Server error', error: err.message });
     }
@@ -767,14 +767,18 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
                 const options = { lean: true, new: true };
                 const updateEnrollmentList = await Course.findByIdAndUpdate(id, register, options)
                 if (updateEnrollmentList) {
+                    console.log('updated enrollment');
                     // need to use projection and populate the course field                    
                     User.findByIdAndUpdate(my_details.id, addToMyCourseList, options)
-                        .then(async updated => {
-                            updateEnrollmentList.enrollment_count++;
-                            await updateEnrollmentList.save();
-                            return res.status(201).json({ data: { msg: 'Course enrollment sucessfull', courseList: updated } })
-                        })
-                        .catch(err => (res.status(400).json({ data: { msg: err } })));
+                    .then(async updated => {
+                        console.log('updated');
+                        // updateEnrollmentList.enrollment_count++;
+                        // console.log(updateEnrollmentList.enrollment_count);
+                        // console.log(++updateEnrollmentList.enrollment_count);
+                        // await updateEnrollmentList.save();
+                        return res.status(201).json({ data: { msg: 'Course enrollment sucessfull', courseList: updated } })
+                    })
+                    .catch(err => (res.status(400).json({ data: { msg: err.message, e:'errrrrr' } })));
                     return;
                 }
                 return res.status(400).json({ data: { msg: 'Enrollment failed' } })
