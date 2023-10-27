@@ -355,7 +355,7 @@ app.get('/api/created-courses', authenticate, async (req, res) => {
 app.patch('/api/course/:id/assign', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
-        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access', err });
+        if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Request admin access' });
         const { id } = req.params;
         const { instructors } = req.body;
         let condition = { _id: id, creatorID: new mongoose.Types.ObjectId(my_details.id) }
@@ -363,7 +363,7 @@ app.patch('/api/course/:id/assign', authenticate, async (req, res) => {
         let options = { lean: true, new: true };
 
         const course = await Course.findOne(condition, projection, options);
-        if (!course) return res.status(404).json({ msg: 'Course not found', err: err.message });
+        if (!course) return res.status(404).json({ msg: 'Course not found or you are not the one that created', });
         const errors = [];
         let user;
         for (let i = 0; i < instructors.length; i++) {
@@ -385,7 +385,7 @@ app.patch('/api/course/:id/assign', authenticate, async (req, res) => {
         };
         const assigned = await Course.findOneAndUpdate(condition, assign, options)
         if (!assigned) throw new Error('Assign failed');
-        res.status(200).json({ data: { msg: 'Intructor(s) assigned successfully', assigned } })
+        res.status(200).json({msg: 'Intructor(s) assigned successfully', assigned })
     } catch (error) {
         res.status(500).json({ msg: 'Server error', err: error.message });
     }
