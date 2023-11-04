@@ -94,7 +94,7 @@ app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, asyn
 
         userDetails.email = (userDetails.email).toLowerCase();
 
-        if(!(userDetails.email).includes('@')) throw new Error('Invalid email provided')
+        if(!(userDetails.email).includes('@')) throw new Error('Invalid email provided');
 
         let condition = { email: userDetails.email };
         let option = { lean: true };
