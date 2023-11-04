@@ -73,23 +73,22 @@ app.post('/seed/course', async (req, res) => {
 });
 // AUTH
 
-// app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, async (req, res) => {
-app.post('/api/signup',  async (req, res) => {
+app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, async (req, res) => {
     try {
-        // const errors = validationResult(req);
-        // if (!errors.isEmpty()) {
-        //     return res.status(400).json({ status: 'error', msg: errors.array() });
-        // };
-        // console.log('cb');
-        // const files = req.files;
-        // if (files.image[0].size > 5000000) {
-        //     const del = await deleteImage(res, gfs, files.image[0].id);
-        //     if (del) throw new Error(`${del} \n\n File shld not exceed 5mb`);
-        //     throw new Error('File shld not exceed 5mb');
-        // };
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ status: 'error', msg: errors.array() });
+        };
+        console.log('cb');
+        const files = req.files;
+        if (files.image[0].size > 5000000) {
+            const del = await deleteImage(res, gfs, files.image[0].id);
+            if (del) throw new Error(`${del} \n\n File shld not exceed 5mb`);
+            throw new Error('File shld not exceed 5mb');
+        };
 
-        // req.body['image'] = { imageID: files.image[0].id };
-        // req.body['image'] = { ...req.body.image, path: files.image[0].filename };
+        req.body['image'] = { imageID: files.image[0].id };
+        req.body['image'] = { ...req.body.image, path: files.image[0].filename };
 
         const userDetails = req.body;
 
@@ -97,29 +96,29 @@ app.post('/api/signup',  async (req, res) => {
 
         if(!(userDetails.email).includes('@')) throw new Error('Invalid email provided')
 
-        // let condition = { email: userDetails.email };
-        // let option = { lean: true };
+        let condition = { email: userDetails.email };
+        let option = { lean: true };
 
-        // let exists = await User.findOne(condition, option);
-        // if (!exists) {
-        //     userDetails.password = generateHashPassword(userDetails.password);
-        //     new User(userDetails).save()
-        //         .then(user => {
-        //             return res.json({ status: 201, msg: 'Account created!', user });
-        //         })
-        //         .catch(err => {
-        //             return res.json({
-        //                 status: 400,
-        //                 msg: err
-        //             });
-        //         })
-        //     return;
-        // }
-        // await deleteImage(res, gfs, files.image[0].id);
-        // return res.json({
-        //     status: 409,
-        //     msg: 'Account already exists'
-        // });
+        let exists = await User.findOne(condition, option);
+        if (!exists) {
+            userDetails.password = generateHashPassword(userDetails.password);
+            new User(userDetails).save()
+                .then(user => {
+                    return res.json({ status: 201, msg: 'Account created!', user });
+                })
+                .catch(err => {
+                    return res.json({
+                        status: 400,
+                        msg: err
+                    });
+                })
+            return;
+        }
+        await deleteImage(res, gfs, files.image[0].id);
+        return res.json({
+            status: 409,
+            msg: 'Account already exists'
+        });
     } catch (err) {
         return res.status(500).json({ msg: 'Server error', err: err.message });
     }
