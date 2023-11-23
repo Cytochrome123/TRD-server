@@ -301,7 +301,8 @@ app.post('/api/course', GridFsConfig.uploadMiddleware, validation.course, authen
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ status: 'error', msg: errors.array() });
+            // return res.status(400).json({ status: 'error', msg: errors.array() });
+            throw new Error(`${errors.array()}`)
         };
 
         const my_details = req.user;
