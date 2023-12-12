@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const session = require('express-session');
+// const session = require('express-session');
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SG_API_KEY);
 const mongoose = require('mongoose');
@@ -38,12 +38,12 @@ app.use(cors({
     optionsSuccessStatus: 200,
     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Origin']
 }));
-app.use(session({
-    secret: 'TRD',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: true }
-}));
+// app.use(session({
+//     secret: 'TRD',
+//     resave: false,
+//     saveUninitialized: false,
+//     cookie: { secure: true }
+// }));
 
 const otpMap = new Map();
 
@@ -94,7 +94,7 @@ app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, asyn
 
         userDetails.email = (userDetails.email).toLowerCase();
 
-        if(!(userDetails.email).includes('@')) throw new Error('Invalid email provided');
+        if(!userDetails.email.includes('@')) throw new Error('Invalid email provided');
 
         let condition = { email: userDetails.email };
         let option = { lean: true };
