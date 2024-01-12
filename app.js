@@ -153,7 +153,7 @@ app.post('/api/signin', async (req, res, next) => {
                         return next(err);
                     });
 
-                const accessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5m' })
+                const accessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
                 return res.status(200).json({ msg: 'Check your mail or phone for an OTP sent', accessToken });
             }
             return res.status(401).json({ msg: 'Incorrect password' })
