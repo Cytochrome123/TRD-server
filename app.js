@@ -847,9 +847,9 @@ app.get('/api/file/:filename', async (req, res) => {
 app.use((err, req, res, next) => res.status(500).json({ msg: err }));
 
 function authenticate(req, res, next) {
-    // console.log(req.headers)
+    console.log(req.headers)
     const authHeader = req.headers['authorization'];
-    // console.log(authHeader)
+    console.log(authHeader)
     const token = authHeader && authHeader.split(' ')[1];
     console.log(token)
     if (token == null || token == undefined) return res.sendStatus(401).json({ msg: 'Unauthorized, login to view' })
