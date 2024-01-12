@@ -851,7 +851,7 @@ function authenticate(req, res, next) {
     const authHeader = req.headers['authorization'];
     // console.log(authHeader)
     const token = authHeader && authHeader.split(' ')[1];
-    // console.log(token)
+    console.log(token)
     if (token == null || token == undefined) return res.sendStatus(401).json({ msg: 'Unauthorized, login to view' })
 
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
