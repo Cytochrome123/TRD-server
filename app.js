@@ -709,7 +709,7 @@ app.get('/api/myData', authenticate, async (req, res) => {
         const option = { lean: true };
         const populateOptions = {
             path: 'courses.courseID',
-            select: 'title description start_end end_date instructors duration location courseType createdDate',
+            select: 'title description start_end end_date instructors duration location courseType createdDate, image, capacity',
 
             populate: {
                 path: 'instructors.instructor',
