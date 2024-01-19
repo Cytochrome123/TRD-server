@@ -12,6 +12,7 @@ require('./db')
 
 const indexRoute = require('./routes');
 const authRoutes = require('./routes/auth')
+const userRoutes = require('./routes/user')
 const courseRoutes = require('./routes/course')
 
 const app = express();
@@ -50,6 +51,7 @@ app.use(cors({
 
 app.use('/api/v2', indexRoute)
 app.use('/api/v2/auth', authRoutes)
+app.use('/api/v2', userRoutes)
 app.use('/api/v2', courseRoutes)
 
 app.use((err, req, res, next) => {

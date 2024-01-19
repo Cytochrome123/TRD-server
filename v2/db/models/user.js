@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const userTypeEnum = [ 'admin', 'instructor', 'student', 'user' ];
-const progressEnum = [ 'not-started', 'in-progress', 'completed', ];
+const progressEnum = [ 'Not-started', 'In-progress', 'Completed', ];
 
 const userSchema = new mongoose.Schema({
 	image: {
@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
 	resetTokenExpiration: String,
 	courses: [{
         courseID: { type: mongoose.Types.ObjectId, ref: 'Course' },
-		progress: { type: String, enum: progressEnum, default: 'not-started' }
+		progress: { type: String, enum: progressEnum, default: 'Not-started' }
     }],
 	createdDate: { type: Number, default: Date.now },
 	lastLogin: { type: Number, default: null },

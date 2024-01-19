@@ -7,15 +7,27 @@ const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SG_API_KEY);
 const mongoose = require('mongoose');
 const axios = require('axios');
+const exceljs = require('exceljs');
 const { validationResult } = require('express-validator');
 
 const User = require('./models/user');
 const Course = require('./models/course');
 const Message = require('./models/message');
+const Quiz = require('./models/quiz');
 const { generateHashPassword, compareHashedPassword } = require('./config/factory');
 const GridFsConfig = require("./config/gridfs");
 const getGfs = require('./db/connection');
 const validation = require('./helper/validation');
+
+const fs = require("fs");
+const { google } = require("googleapis");
+
+const service = google.sheets("v4");
+const credentials = require("./credential.json");
+const { log } = require('console');
+
+// key bdafe5dc2261b6f1a24329e2141e1421898a8806
+// email trd-22@trditems.iam.gserviceaccount.com
 
 const app = express();
 
@@ -94,7 +106,7 @@ app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, asyn
 
         userDetails.email = (userDetails.email).toLowerCase();
 
-        if(!userDetails.email.includes('@')) throw new Error('Invalid email provided');
+        if (!userDetails.email.includes('@')) throw new Error('Invalid email provided');
 
         let condition = { email: userDetails.email };
         let option = { lean: true };
@@ -154,7 +166,7 @@ app.post('/api/signin', async (req, res, next) => {
                     });
 
                 const accessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
-                return res.status(200).json({ msg: 'Check your mail or phone for an OTP sent', accessToken });
+                return res.status(200).json({ msg: 'Check your mail or phone for an OTP code', accessToken });
             }
             return res.status(401).json({ msg: 'Incorrect password' })
         }
@@ -321,11 +333,9 @@ app.post('/api/course', GridFsConfig.uploadMiddleware, validation.course, authen
             if (exists) return res.status(400).json({ msg: 'Course with the same title exists' })
             console.log('in')
             courseDetails['creatorID'] = my_details.id;
-            courseDetails['status'] = 'Upcoming';
+            // courseDetails['status'] = 'upcoming';
             console.log(courseDetails)
-            // courseDetails['instructor_id'] = my_details.id;
-            // const course = await new Course(courseDetails).save();
-            // course ? res.status(201).json({data: { msg: 'Course created', course }}) : res.status(401).json({data: { msg: err }})
+
             new Course(courseDetails).save()
                 .then(course => (res.status(201).json({ msg: 'Course created', course })))
                 .catch(err => (res.status(401).json({ msg: err })))
@@ -337,7 +347,7 @@ app.post('/api/course', GridFsConfig.uploadMiddleware, validation.course, authen
     }
 });
 
-app.get('/api/created-courses', authenticate, async (req, res) => {
+app.get('/api/created-courses', authenticate, async (req, res) => { // yet
     try {
         const my_details = req.user;
         if (my_details.userType === 'admin') {
@@ -391,77 +401,75 @@ app.patch('/api/course/:id/assign', authenticate, async (req, res) => {
         };
         const assigned = await Course.findOneAndUpdate(condition, assign, options)
         if (!assigned) throw new Error('Assign failed');
-        res.status(200).json({msg: 'Intructor(s) assigned successfully', assigned })
+        res.status(200).json({ msg: 'Intructor(s) assigned successfully', assigned })
     } catch (error) {
         res.status(500).json({ msg: 'Server error', err: error.message });
     }
 });
 
-app.put('/api/course/:id/status', authenticate, (req, res, next) => {
+app.put('/api/course/:id/status', authenticate, async (req, res, next) => { // yet
     try {
         const my_details = req.user;
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, deadline } = req.body;
 
+        console.log(status)
         if (!my_details === 'admin') return res.status(403).json({ msg: 'Admin access only!', err });
-        Course.findById(id)
-            .then(async course => {
-                course.status = status;
-                const updated = await course.save()
-                const populateOptions = {
-                    path: 'enrolled.userID',
-                    select: 'firstName lastName email phoneNumber',
-                    model: 'User'
-                }
-                return updated.populate(populateOptions);
-            })
-            .then(populated => {
-                console.log(populated.enrolled[0].userID);
-                populated.enrolled.map(student => {
-                    console.log(student)
-                    console.log(student.userID.email)
-                    let msg = {
-                        to: student.userID.email,
-                        from: 'hoismail2017@gmail.com',
-                        subject: `The wait has finally ended`,
-                        text: `The course titled ${populated.title} has already begun, log onto the portal to get started`,
-                    };
-                    if (status === 'In progress') {
-                        sgMail.send(msg)
-                            .then(() => {
-                                console.log(`Mail sent to ${student.userID.email}`);
-                                return next(null, populated)
-                            })
-                            .catch(err => {
-                                console.error(`Error sending to ${student.userID.email}`, { err: err.message });
-                                return next(err);
-                            });
-                        return;
-                    } else if (status === 'Completed') {
-                        msg = {
-                            to: student.userID.email,
-                            from: 'hoismail2017@gmail.com',
-                            subject: `Congratulations!!!`,
-                            text: `The course titled ${populated.title} has now ended, finish up all you need to do in order to be eligible to request for your certificate`,
-                        };
-                        sgMail.send(msg)
-                            .then(() => {
-                                console.log(`Mail sent to ${student.userID.email}`);
-                                return next(null, populated)
-                            })
-                            .catch(err => {
-                                console.error(`Error sending to ${student.userID.email}`, err);
-                                // return next(err);
-                                return res.status(400).json({ msg: 'Error sending mail', err: err.message });
-                            });
-                        return;
-                    }
-                })
-                return res.status(200).json({ msg: 'Course status updated succesfully' })
-            })
-            .catch(err => { console.log(err) })
 
-        // course.status = status
+        const update = { status, deadline };
+
+        const updated = await Course.findByIdAndUpdate(id, deadline ? update : { status }, { new: true })
+
+        if (!updated) return next('Failed to update course status, kindly try again later');
+
+        const populateOptions = {
+            path: 'enrolled.userID',
+            select: 'firstName lastName email phoneNumber',
+            model: 'User'
+        }
+
+        const populatedCourse = await updated.populate(populateOptions)
+
+        console.log(populatedCourse.enrolled)
+
+        for (let student of populatedCourse.enrolled) {
+            if (populatedCourse.status == 'application') {
+                const msg = {
+                    subject: `The wait has finally ended`,
+                    text: `${populatedCourse.title} is now open to application, kindly get yourselves enrolled before it closes. The deadline for application is ${populatedCourse.deadline}. Thanks`
+                }
+                const sent = await sgMail.send(constructMessage(student.userID.email, msg))
+                if (!sent) return next(`Failed to send mail to ${student.userID.email}`)
+                console.log(`Mail sent to ${student.userID.email}`)
+            } else if (populatedCourse.status == 'in-progress') {
+                const msg = {
+                    subject: `The wait has finally ended`,
+                    text: `The course titled ${populated.title} has already begun, log onto the portal and get started`,
+                }
+                const sent = await sgMail.send(constructMessage(student.userID.email, msg))
+                if (!sent) return next(`Failed to send mail to ${student.userID.email}`)
+                console.log(`Mail sent to ${student.userID.email}`)
+            } else if (populatedCourse.status == 'completed') {
+                const msg = {
+                    subject: `Congratulations!!!`,
+                    text: `The course titled ${populated.title} has now ended, finish up all you need to do in order to be eligible to request for your certificate`,
+                }
+                const sent = await sgMail.send(constructMessage(student.userID.email, msg))
+                if (!sent) return next(`Failed to send mail to ${student.userID.email}`)
+                console.log(`Mail sent to ${student.userID.email}`)
+            }
+        };
+
+        function constructMessage(recipient, msg) {
+            return {
+                to: recipient,
+                from: 'hoismail2017@gmail.com',
+                subject: msg.subject,
+                text: msg.text
+            };
+        };
+
+        return res.status(200).json({ msg: 'Course status updated succesfully', status: populatedCourse.status, deadline: populatedCourse.deadline });
     } catch (err) {
         res.status(500).json({ msg: 'Server error', error: err.message });
     }
@@ -743,6 +751,13 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
         console.log({ my_details });
         const course = await Course.findById(id, projection, option);
         console.log(course);
+
+        if(course.status !== 'application') throw new Error('Sorry this course is not open for application at the moment. Kindly check back later')
+
+        const available = new Date(course.deadline) >= new Date()
+
+        if(!available) throw new Error('Sorry, the deadline for enrollment has passed. Kindly check back or contact the organizers for more information. Thanks')
+        
         if (course) {
             // if already registered for the coiurse
             //else
@@ -750,9 +765,13 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
 
             // course.enrolled.map(registrations => )
             const registered = course.enrolled.some(enrollment => enrollment.userID.equals(my_details.id));
-            console.log(registered);
+
+            const eligible = course.enrolled.grade === 'passed'
+            
+            console.log(registered, 'registered');
+            console.log(eligible, 'eligible');
             // THIS LOGIC IS BAD, UPDATING COURSE TWICE AT TWO DIFFERENT INSTEAD OF JUST ONCE AND CALLING .SAVE() on the model
-            if (!registered) {
+            if (!registered || !eligible) {
                 const register = {
                     $push: {
                         enrolled: {
@@ -776,15 +795,15 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
                     console.log('updated enrollment');
                     // need to use projection and populate the course field                    
                     User.findByIdAndUpdate(my_details.id, addToMyCourseList, options)
-                    .then(async updated => {
-                        console.log('updated');
-                        // updateEnrollmentList.enrollment_count++;
-                        // console.log(updateEnrollmentList.enrollment_count);
-                        // console.log(++updateEnrollmentList.enrollment_count);
-                        // await updateEnrollmentList.save();
-                        return res.status(201).json({ data: { msg: 'Course enrollment sucessfull', courseList: updated } })
-                    })
-                    .catch(err => (res.status(400).json({ data: { msg: err.message, e:'errrrrr' } })));
+                        .then(async updated => {
+                            console.log('updated');
+                            // updateEnrollmentList.enrollment_count++;
+                            // console.log(updateEnrollmentList.enrollment_count);
+                            // console.log(++updateEnrollmentList.enrollment_count);
+                            // await updateEnrollmentList.save();
+                            return res.status(201).json({ data: { msg: 'Course enrollment sucessfull', courseList: updated } })
+                        })
+                        .catch(err => (res.status(400).json({ data: { msg: err.message, e: 'errrrrr' } })));
                     return;
                 }
                 return res.status(400).json({ data: { msg: 'Enrollment failed' } })
@@ -826,32 +845,231 @@ app.post('/api/payment/status', async (req, res) => {
 app.get('/api/file/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
-        
-        gfs.find({filename: filename}).toArray((err, file) => {
-            if(err) {
+
+        gfs.find({ filename: filename }).toArray((err, file) => {
+            if (err) {
                 // throw new Error(err.message);
-                res.status(400).json({msg: err.message});
+                res.status(400).json({ msg: err.message });
             } else {
                 console.log(file)
                 const type = file[0].contentType;
                 res.set("Content-Type", type);
             }
-            
+
         });
         gfs.openDownloadStreamByName(filename).pipe(res);
     } catch (err) {
         res.status(err.status || 500).json({ msg: 'Server error', err: err.message });
     }
+});
+
+app.post('/api/:courseID/quiz/setup', async (req, res) => {
+    try {
+        const { name, link, sheetID, pass_mark } = req.body;
+
+        if (!link && !sheetID && !name) throw new Error('Invalid input')
+
+        const quiz = await new Quiz({ name, link, sheetID, pass_mark }).save();
+
+        return res.status(200).json({ msg: 'Quiz created', quiz });
+    } catch (err) {
+        res.status(err.status || 500).json({ msg: 'Server error', err: err.message });
+    }
 })
+
+// GEt if passed or failed
+app.post('/api/quiz/:name/:sheetID/completed/proceed', authenticate, async (req, res) => {
+    try {
+        const { email } = req.user;
+        const { name, sheetID } = req.params;
+
+        const authClient = new google.auth.JWT(
+            credentials.client_email,
+            null,
+            credentials.private_key.replace(/\\n/g, "\n"),
+            ["https://www.googleapis.com/auth/spreadsheets"]
+        );
+
+        const token = await authClient.authorize();
+        // Set the client credentials
+        authClient.setCredentials(token);
+
+        // await Quiz.findOneAndUpdate({ name, sheetID }, { pass_mark: 5 }, { new: true })
+
+        const quiz = await Quiz.findOne({ name, sheetID })
+
+        // Get the rows
+        const quizResponse = await service.spreadsheets.values.get({
+            auth: authClient,
+            // spreadsheetId: "1bvHPUxjbmGRmfUAxdnGQ836qv4yk670DoaQXJhnOS1U",
+            spreadsheetId: "1NdJOgtlq030C__p5_8gJjjXLG12R_DBB_AHq-R9ChN0",
+            range: "A:Z",
+        });
+
+        const data = quizResponse.data.values;
+
+        // console.log(data, 'data')
+
+        const fin = []
+
+        if (data.length) {
+            log('datasss')
+
+            const emailIndex = data[0].findIndex(d => d == 'Email')
+            log(emailIndex)
+            const scoreIndex = data[0].findIndex(d => d == 'Score')
+            log(scoreIndex)
+
+            // data.shift();
+
+            for (let d of data) {
+                fin.push({ email: d[emailIndex], score: d[scoreIndex] })
+            }
+
+            console.log(fin)
+        }
+
+        const result = fin.find(data => data.email === email);
+
+        const score = result.score.split(' / ')[0]
+
+        log(score, 'score');
+
+        if (score >= quiz.pass_mark) return res.status(200).json({ msg: `Passed`, result: true });
+        return res.status(200).json({ msg: `Failed`, result: false });
+
+        // Saved the answers
+        // fs.writeFileSync("answers.json", JSON.stringify(answers), function (err, file) {
+        //     if (err) throw err;
+        //     console.log("Saved!");
+        // });
+
+    } catch (error) {
+        // console.log(error)
+        res.status(500).json({ msg: 'Server error', error: error.message });
+    }
+});
+
+app.get('/api/courses/download', async (req, res) => {
+    try {
+        let workbook = new exceljs.Workbook();
+
+        const sheet = workbook.addWorksheet('Students');
+
+        sheet.columns = [
+            { header: 'Title', key: 'title', width: 25 },
+            { header: 'Description', key: 'description', width: 50 },
+            { header: 'No of Instructors', key: 'instructors', width: 15 },
+            { header: 'No of students', key: 'students', width: 15 },
+            { header: 'Start Date', key: 'start', width: 25 },
+            { header: 'End Date', key: 'end', width: 25 },
+            { header: 'Duration', key: 'duration', width: 25 },
+            { header: 'Capacity', key: 'capacity', width: 25 },
+            { header: 'Status', key: 'status', width: 25 },
+            { header: '∂eadline', key: 'deadline', width: 25 },
+            { header: 'Course Type', key: 'type', width: 25 },
+        ];
+
+        const courses = await Course.find({});
+
+        if(!courses) throw new Error('No course yet');
+
+        await courses.map((d) => {
+            sheet.addRow({
+                title: d.title,
+                description: d.description,
+                instructors: d.instructors.length,
+                students: d.enrolled.length,
+                start: d.start_date,
+                end: d.end_date,
+                duration: d.duration,
+                capacity: d.capacity,
+                status: d.status,
+                deadline: d.deadline,
+                type: d.courseType,
+            })
+        });
+
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+
+        res.setHeader(
+            "Content-Disposition",
+            "attachment;filename=" + `All courses.xlsx`
+        );
+
+        workbook.xlsx.write(res);
+    } catch (error) {
+        console.log(error)
+        res.status(error.status || 500).json({ msg: 'Server error', err: error.message });
+    }
+});
+
+app.get('/api/course/:id/students/download', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        let workbook = new exceljs.Workbook();
+
+        const sheet = workbook.addWorksheet('Students');
+
+        sheet.columns = [
+            { header: 'First Name', key: 'fName', width: 25 },
+            { header: 'Last Name', key: 'lName', width: 25 },
+            { header: 'Email', key: 'email', width: 50 },
+            { header: 'Phone Number', key: 'phone', width: 25 }
+        ];
+
+        const course = await Course.findById(id);
+
+        if(!course) throw new Error('Course not found');
+
+        const populateOptions = {
+            path: 'enrolled.userID',
+            select: 'firstName lastName email phoneNumber',
+            model: 'User'
+        }
+
+        const populatedCourse = await course.populate(populateOptions);
+
+        const data = populatedCourse.enrolled;
+
+        await data.map((d) => {
+            sheet.addRow({
+                fName: d.userID.firstName,
+                lName: d.userID.lastName,
+                email: d.userID.email,
+                phone: d.userID.phoneNumber,
+            })
+        });
+
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+
+        res.setHeader(
+            "Content-Disposition",
+            "attachment;filename=" + `${populatedCourse.title} students.xlsx`
+        );
+
+        workbook.xlsx.write(res);
+    } catch (error) {
+        console.log(error)
+        res.status(error.status || 500).json({ msg: 'Server error', err: error.message });
+    }
+});
 
 app.use((err, req, res, next) => res.status(500).json({ msg: err }));
 
 function authenticate(req, res, next) {
-    console.log(req.headers)
+    // console.log(req.headers)
     const authHeader = req.headers['authorization'];
-    console.log(authHeader)
+    // console.log(authHeader)
     const token = authHeader && authHeader.split(' ')[1];
-    console.log(token)
+    // console.log(token)
     if (token == null || token == undefined) return res.sendStatus(401).json({ msg: 'Unauthorized, login to view' })
 
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
@@ -867,13 +1085,13 @@ async function deleteImage(res, gfs, id) {
         // const _id = new mongoose.Types.ObjectId(id);
         const _id = id;
         gfs.delete(_id)
-        .then(del => {
-            console.log('file deleted');
-        return 'File deleted'
-        })
-        .catch(error => {
-            throw new Error('Error deleting uploaded file', error);
-        })
+            .then(del => {
+                console.log('file deleted');
+                return 'File deleted'
+            })
+            .catch(error => {
+                throw new Error('Error deleting uploaded file', error);
+            })
         // const del = await gfs.delete(_id)
         // // if(!del) throw new Error('Error deleting uploaded file');
         // if (!del) return 'Error deleting uploaded file';

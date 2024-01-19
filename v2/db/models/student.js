@@ -1,10 +1,13 @@
 const mongoose = require('mongoose');
 
-const courseTypeEnum = [ 'free', 'paid' ];
-const statusEnum = [ 'upcoming', 'application', 'in-progress', 'completed' ];
-const progressEnum = [ 'not-started', 'in-progress', 'completed', ]
+// const courseTypeEnum = [ 'free', 'paid' ];
+// const statusEnum = [ 'Upcoming', 'In progress', 'Completed' ];
+// const progressEnum = [ 'Not-started', 'In-progress', 'Completed', ]
 
-const courseSchema = new mongoose.Schema({
+const studentSchema = new mongoose.Schema({
+    userID,
+
+    
     creatorID: { type: mongoose.Types.ObjectId, required: true, ref: 'User' },
     image: {
         imageID: { type: String, default: null },
@@ -16,29 +19,38 @@ const courseSchema = new mongoose.Schema({
     instructors: [ {
         instructor: { type: mongoose.Types.ObjectId, ref: 'User' }
     } ],
-    start_date: { type: Date },
-    end_date: { type: Date },
+    start_date: {type: Date},
+    end_date: {type: Date},
     duration: String,
     location: String,
     capacity: Number,
 	courseType: { type: String, required: true, enum: courseTypeEnum, default: 'paid' },
     amount: { type: Number, default: 0},
-    status: { type: String, enum: statusEnum, default: 'upcoming'},
-    deadline: { type: Date },
+    status: { type: String, enum: statusEnum, default: 'Upcoming'},
     // certificateReady: Boolean,
     // enrolled: [ { type: mongoose.Types.ObjectId, default: [] } ],
     enrolled: [{
         userID: { type: mongoose.Types.ObjectId, ref: 'User' }, 
         paid: { type: Boolean, required: true, default: false},
-        progress: { type: String, enum: progressEnum, default: 'not-started' },
-        grade: { type: String },
-        score: { type: Number }
+        progress: { type: String, enum: progressEnum, default: 'Not-started' }
     }],
     enrollment_count: { type: Number, default: 0 },
-    quizID: { type: mongoose.Types.ObjectId, ref: 'Quiz' },
     createdDate: { type: Number, default: Date.now },
 })
 
-// courseSchema.plugin(passportLocalMongoose)
+const istructorSchema = {
+    courseID,
+    userID
+}
 
-module.exports = mongoose.model('Course', courseSchema);
+const courseSchema = {
+    title,
+    description,
+    ...'km',
+    passmark,
+    status
+}
+
+// studentSchema.plugin(passportLocalMongoose)
+
+module.exports = mongoose.model('Student', studentSchema);
