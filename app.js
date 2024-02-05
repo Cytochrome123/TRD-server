@@ -23,11 +23,7 @@ const fs = require("fs");
 const { google } = require("googleapis");
 
 const service = google.sheets("v4");
-const credentials = require("./credential.json");
 const { log } = require('console');
-
-// key bdafe5dc2261b6f1a24329e2141e1421898a8806
-// email trd-22@trditems.iam.gserviceaccount.com
 
 const app = express();
 
@@ -646,7 +642,7 @@ app.delete('/api/user/:id/delete', authenticate, async (req, res) => {
 
         const { id } = req.params;
 
-        const user = await User.findByIdAndDelete(id, {}, { new: true, lean: true })
+        const user = await User.findByIdAndDelete(id, { new: true, lean: true })
         console.log(user)
         if (!user) return res.status(404).json({ data: { msg: 'User not found' } })
         return res.status(200).json({ data: { msg: `${user.email}'s accoun deleted successfully` } })
@@ -739,6 +735,26 @@ app.get('/api/myData', authenticate, async (req, res) => {
     }
 });
 
+app.get('/api/course/:id/quiz', authenticate, (req, res) => {
+    try {
+        const my_details = req.user;
+        const { id } = req.params;
+        let projection = {};
+        let option = { lean: true };
+        let populateOptions = {
+            path: 'courseID',
+            select: 'title description',
+            model: 'Course'
+        }
+
+        Quiz.findOne({ courseID: id }, projection, option).populate(populateOptions)
+            .then(quiz => (res.status(200).json({ msg: 'Course quiz ', quiz })))
+            .catch(err => (res.status(404).json({ msg: 'Not found' })))
+        return;
+    } catch (err) {
+        return res.status(500).json({ msg: 'Server error', err: err.message })
+    }
+});
 
 app.post('/api/course/:id/register', authenticate, async (req, res) => {
     try {
@@ -752,12 +768,12 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
         const course = await Course.findById(id, projection, option);
         console.log(course);
 
-        if(course.status !== 'application') throw new Error('Sorry this course is not open for application at the moment. Kindly check back later')
+        if (course.status !== 'application') throw new Error('Sorry this course is not open for application at the moment. Kindly check back later')
 
         const available = new Date(course.deadline) >= new Date()
 
-        if(!available) throw new Error('Sorry, the deadline for enrollment has passed. Kindly check back or contact the organizers for more information. Thanks')
-        
+        if (!available) throw new Error('Sorry, the deadline for enrollment has passed. Kindly check back or contact the organizers for more information. Thanks')
+
         if (course) {
             // if already registered for the coiurse
             //else
@@ -767,7 +783,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
             const registered = course.enrolled.some(enrollment => enrollment.userID.equals(my_details.id));
 
             const eligible = course.enrolled.grade === 'passed'
-            
+
             console.log(registered, 'registered');
             console.log(eligible, 'eligible');
             // THIS LOGIC IS BAD, UPDATING COURSE TWICE AT TWO DIFFERENT INSTEAD OF JUST ONCE AND CALLING .SAVE() on the model
@@ -811,7 +827,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
             return res.status(400).json({ msg: 'You\'ve enrolledd for this before' });
         }
     } catch (err) {
-        res.status(500).json({ msg: 'Server error', error: err.message });
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
     }
 });
 
@@ -863,8 +879,11 @@ app.get('/api/file/:filename', async (req, res) => {
     }
 });
 
-app.post('/api/:courseID/quiz/setup', async (req, res) => {
+app.post('/api/:courseID/quiz/setup', authenticate, async (req, res) => {
     try {
+        const { userType } = req.user;
+        if (userType !== 'admin') return res.status(403).json({ msg: 'Only admin can access this!!' });
+
         const { name, link, sheetID, pass_mark } = req.body;
 
         if (!link && !sheetID && !name) throw new Error('Invalid input')
@@ -884,9 +903,9 @@ app.post('/api/quiz/:name/:sheetID/completed/proceed', authenticate, async (req,
         const { name, sheetID } = req.params;
 
         const authClient = new google.auth.JWT(
-            credentials.client_email,
+            credentials.process.env.GOOGLE_CLIENT_EMAIL,
             null,
-            credentials.private_key.replace(/\\n/g, "\n"),
+            credentials.process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
             ["https://www.googleapis.com/auth/spreadsheets"]
         );
 
@@ -972,7 +991,7 @@ app.get('/api/courses/download', async (req, res) => {
 
         const courses = await Course.find({});
 
-        if(!courses) throw new Error('No course yet');
+        if (!courses) throw new Error('No course yet');
 
         await courses.map((d) => {
             sheet.addRow({
@@ -1024,7 +1043,7 @@ app.get('/api/course/:id/students/download', async (req, res) => {
 
         const course = await Course.findById(id);
 
-        if(!course) throw new Error('Course not found');
+        if (!course) throw new Error('Course not found');
 
         const populateOptions = {
             path: 'enrolled.userID',
