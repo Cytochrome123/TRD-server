@@ -1,4 +1,5 @@
 const Validator = require(".");
+const { userDBValidator } = require("../db/adapters/user");
 
 const userValidations = {
     validateContact: Validator.validate({
@@ -34,11 +35,31 @@ const userValidations = {
     validateViewUser: Validator.validate({
         id: {
             in: ['params'],
+            isString: true,
             custom: {
                 options: async (id, { req }) => {
                     const user = req.user;
 
-                    if (user.userType !== 'admin') throw new Error('UnAuthorized! Only Admin can access this')
+                    if (user.userType !== 'admin') throw new Error('UnAuthorized! Only Admin can access this');
+
+                    const us = await userDBValidator.isUser({ _id: id });
+
+                    if (!us) throw new Error('User does not exist');
+                }
+            }
+        }
+    }),
+
+    validateDeleteUser: Validator.validate({
+        id: {
+            in: ['params'],
+            isString: true,
+            custom: {
+                options: async (id, { req }) => {
+
+                    const user = await userDBValidator.isUser({ _id: id });
+
+                    if (!user) throw new Error('User does not exist');
                 }
             }
         }

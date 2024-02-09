@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 
 const otpMap = new Map();
-
+console.log(otpMap)
 const factory = {
     generateHashPassword(password) {
         let salt = bcrypt.genSaltSync(10);
@@ -22,6 +22,14 @@ const factory = {
 
     addToOtpMap: (key, val) => {
         return otpMap.set(key, val)
+    },
+
+    getOtp: (key) => {
+        return otpMap.get(key);
+    },
+
+    removeOtp: (key) => {
+        return otpMap.delete(key)
     }
 }
 

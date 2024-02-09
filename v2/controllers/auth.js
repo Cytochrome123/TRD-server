@@ -31,7 +31,7 @@ const auth = {
 
             await SG_sendMail(my_details.email, OTP);
 
-            const accessToken = jwt.sign({ id: my_details._id, firstName: my_details.firstName, email: my_details.email, userType: my_details.userType, courses: my_details.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5m' })
+            const accessToken = jwt.sign({ id: my_details._id, firstName: my_details.firstName, email: my_details.email, userType: my_details.userType }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
             return res.status(200).json({ msg: 'Check your mail for an OTP code', accessToken });
         } catch (error) {
             return res.status(500).json({ msg: 'Server error', err: error.message });
@@ -40,7 +40,7 @@ const auth = {
 
     verifyLogin: async (req, res) => {
         try {
-            const user = userDB.findUser({ email: req.body.email })
+            const user = await userDB.findUser({ email: req.query.email })
 
             const newAccessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' });
             return res.json({ msg: 'Login successful', newAccessToken, user });

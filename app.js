@@ -197,7 +197,7 @@ app.post('/api/verify', authenticate, (req, res) => {
                 //     const newAccessToken = jwt.sign({email: user.email}, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' })
                 //     return res.json({ msg: 'Login successful', newAccessToken });
                 // });
-                const newAccessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' });
+                const newAccessToken = jwt.sign({ id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' });
                 return res.json({ msg: 'Login successful', newAccessToken, user });
             })
             .catch(err => {
@@ -225,6 +225,23 @@ app.get('/api/courses', async (req, res) => {
         return res.status(500).json({ msg: 'Server error', err: err.message })
     }
 });
+
+app.get('/api/admin/courses', authenticate, async (req, res) => {
+    try {
+        const populateOptions = {
+            path: 'basicCourseID',
+            select: '_id title description',
+            model: 'Course'
+        };
+
+        const courses = await Course.find({}).populate(populateOptions).exec();
+        if (!courses) throw new Error('Unable to fetch courses');
+
+        res.status(200).json({ msg: 'Courses', courses });
+    } catch (err) {
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
+    }
+})
 
 app.get('/course/:id', (req, res) => {
     try {
@@ -290,6 +307,26 @@ app.get('/api/course/:id', authenticate, (req, res) => {
     }
 });
 
+app.get('/api/course/:id/basic', authenticate, async (req, res) => {
+    try {
+        const my_details = req.user;
+        const { id } = req.params;
+        let projection;
+        let option = { lean: true };
+        let populateOptions = {
+            path: 'basicCourseID',
+            select: '_id image title description duration start_date end_date',
+            model: 'Course'
+        }
+
+        const basic = await Course.findById(id, projection, option).populate(populateOptions);
+        if (!basic) throw new Error('Not found')
+        return res.status(200).json({ msg: 'Basic course details', basic });
+    } catch (err) {
+        return res.status(500).json({ msg: 'Server error', err: err.message })
+    }
+});
+
 
 // ALL
 app.patch('/api/user/:id/update', authenticate, async (req, res) => {
@@ -325,6 +362,7 @@ app.post('/api/course', GridFsConfig.uploadMiddleware, validation.course, authen
             req.body['image'] = { imageID: files.image[0].id };
             req.body['image'] = { ...req.body.image, path: files.image[0].filename };
             const courseDetails = req.body;
+            courseDetails.basic ? courseDetails['basicCourseID'] = courseDetails.basic : '';
             const exists = await Course.findOne({ title: courseDetails.title })
             if (exists) return res.status(400).json({ msg: 'Course with the same title exists' })
             console.log('in')
@@ -424,49 +462,90 @@ app.put('/api/course/:id/status', authenticate, async (req, res, next) => { // y
             model: 'User'
         }
 
-        const populatedCourse = await updated.populate(populateOptions)
+        const populatedCourse = await updated.populate(populateOptions);
 
-        console.log(populatedCourse.enrolled)
+        const stdEmails = [];
+        const all = [];
+        if (populatedCourse.status == 'application') {
+            // get All users;
+            const students = await User.find({ userType: 'student' });
 
-        for (let student of populatedCourse.enrolled) {
-            if (populatedCourse.status == 'application') {
+            if (students) {
+                for (let student of students) {
+                    stdEmails.push(student.email);
+                }
+    
                 const msg = {
                     subject: `The wait has finally ended`,
                     text: `${populatedCourse.title} is now open to application, kindly get yourselves enrolled before it closes. The deadline for application is ${populatedCourse.deadline}. Thanks`
                 }
-                const sent = await sgMail.send(constructMessage(student.userID.email, msg))
-                if (!sent) return next(`Failed to send mail to ${student.userID.email}`)
-                console.log(`Mail sent to ${student.userID.email}`)
-            } else if (populatedCourse.status == 'in-progress') {
-                const msg = {
-                    subject: `The wait has finally ended`,
-                    text: `The course titled ${populated.title} has already begun, log onto the portal and get started`,
-                }
-                const sent = await sgMail.send(constructMessage(student.userID.email, msg))
-                if (!sent) return next(`Failed to send mail to ${student.userID.email}`)
-                console.log(`Mail sent to ${student.userID.email}`)
-            } else if (populatedCourse.status == 'completed') {
-                const msg = {
-                    subject: `Congratulations!!!`,
-                    text: `The course titled ${populated.title} has now ended, finish up all you need to do in order to be eligible to request for your certificate`,
-                }
-                const sent = await sgMail.send(constructMessage(student.userID.email, msg))
-                if (!sent) return next(`Failed to send mail to ${student.userID.email}`)
-                console.log(`Mail sent to ${student.userID.email}`)
-            }
+                const sent = await sgMail.send(constructMessage(stdEmails, msg, generateTimestamps(stdEmails.length, 10)));
+                if (!sent) return next(`Failed to send mail to ${stdEmails}`)
+                console.log(`Mail sent to ${stdEmails}`)
+            };
+
         };
 
-        function constructMessage(recipient, msg) {
+        console.log(populatedCourse.enrolled);
+
+        for (let student of populatedCourse.enrolled) {
+            all.push(student.userID.email);
+        };
+
+        if (populatedCourse.status == 'application') {
+            const msg = {
+                subject: `The wait has finally ended`,
+                text: `${populatedCourse.title} is now open to application, kindly get yourselves enrolled before the deadline. The deadline for application is ${populatedCourse.deadline}. Thanks`
+            }
+            const sent = await sgMail.send(constructMessage(all, msg, generateTimestamps(all.length, 10)))
+            if (!sent) return next(`Failed to send mail to ${all}`)
+            console.log(`Mail sent to ${all}`)
+        } else if (populatedCourse.status == 'in-progress') {
+            const msg = {
+                subject: `The wait has finally ended`,
+                text: `The course titled ${populated.title} has already begun, log onto the portal and get started`,
+            }
+            const sent = await sgMail.send(constructMessage(all, msg, generateTimestamps(all.length, 10)))
+            if (!sent) return next(`Failed to send mail to ${all}`)
+            console.log(`Mail sent to ${all}`)
+        } else if (populatedCourse.status == 'completed') {
+            const msg = {
+                subject: `Congratulations!!!`,
+                text: `The course titled ${populated.title} has now ended, finish up all you need to do in order to be eligible to request for your certificate`,
+            }
+            const sent = await sgMail.send(constructMessage(all, msg, generateTimestamps(all.length, 10)))
+            if (!sent) return next(`Failed to send mail to ${all}`)
+            console.log(`Mail sent to ${all}`)
+        }
+
+        function constructMessage(recipients, msg, queue) {
+            console.log(recipients, 'RECIPiENT')
+            console.log(queue, 'QUEUE')
             return {
-                to: recipient,
-                from: 'hoismail2017@gmail.com',
+                to: recipients,
+                from: { email: 'hoismail2017@gmail.com', name: 'TRD iTems UI' },
+                // from: 'Name <hoismail2017@gmail.com>',
                 subject: msg.subject,
-                text: msg.text
+                text: msg.text,
+                "send_each_at": queue
             };
         };
 
+        function generateTimestamps(numberOfTimestamps, intervalInMinutes) {
+            const timestamps = [];
+            let currentTime = Date.now(); // Get current time in milliseconds
+
+            for (let i = 0; i < numberOfTimestamps; i++) {
+                currentTime += intervalInMinutes * 60 * 1000; // convertingggg to milliseconds
+                timestamps.push(Math.floor(currentTime / 1000)); // UNIX timestamp (seconds)
+            }
+
+            return timestamps;
+        }
+
         return res.status(200).json({ msg: 'Course status updated succesfully', status: populatedCourse.status, deadline: populatedCourse.deadline });
     } catch (err) {
+        console.log(err)
         res.status(500).json({ msg: 'Server error', error: err.message });
     }
 });
@@ -735,7 +814,68 @@ app.get('/api/myData', authenticate, async (req, res) => {
     }
 });
 
-app.get('/api/course/:id/quiz', authenticate, (req, res) => {
+app.get('/api/course/:id/quiz-status/:quizId', authenticate, async (req, res) => {
+    try {
+        const { email } = req.user;
+        const { id, quizId } = req.params;
+
+        const course = await Course.findById(id);
+        if (!course) throw new Error('Course not found');
+
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) throw new Error('Quiz not found');
+
+        const authClient = new google.auth.JWT(
+            process.env.GOOGLE_CLIENT_EMAIL,
+            null,
+            process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+            ["https://www.googleapis.com/auth/spreadsheets"]
+        );
+
+        const token = await authClient.authorize();
+        authClient.setCredentials(token);
+
+        // Get the rows
+        const quizResponse = await service.spreadsheets.values.get({
+            auth: authClient,
+            // spreadsheetId: "1bvHPUxjbmGRmfUAxdnGQ836qv4yk670DoaQXJhnOS1U",
+            // spreadsheetId: "1NdJOgtlq030C__p5_8gJjjXLG12R_DBB_AHq-R9ChN0",
+            // spreadsheetId: "1Hw-WAddENONsxLiVLeEkaUxxWpU1sACdDNaU2E_lQkw",
+            spreadsheetId: quiz.sheetID,
+            range: "A:Z",
+        });
+
+        const data = quizResponse.data.values;
+
+        // console.log(data, 'data')
+
+        const fin = []
+
+        if (data.length) {
+            // data.shift();
+            const emailIndex = data[0].findIndex(d => d == 'Email')
+            const scoreIndex = data[0].findIndex(d => d == 'Score')
+
+            for (let d of data) {
+                d[emailIndex] && fin.push({ email: d[emailIndex], score: d[scoreIndex] })
+            }
+            // console.log(fin, 'fin')
+        }
+
+        const taken = fin.find(f => f.email === email);
+
+        const score = taken?.score?.split(' / ')[0]
+
+        res.status(200).json({ msg: 'Quiz status', hasTakenQuiz: !!taken, quizPassed: score >= quiz.pass_mark ? true : false });
+        // if(score) return res.status(200).json({ msg: 'Quiz status', hasTakenQuiz: !!taken, quizPassed: score >= quiz.pass_mark ? true : false });
+        // return res.status(200).json({ msg: 'Quiz status', hasTakenQuiz: !!taken, quizPassed: false });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ msg: error.message ? error.message : 'Server error', error: error.message });
+    }
+})
+
+app.get('/api/course/:id/quiz', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
         const { id } = req.params;
@@ -747,17 +887,112 @@ app.get('/api/course/:id/quiz', authenticate, (req, res) => {
             model: 'Course'
         }
 
-        Quiz.findOne({ courseID: id }, projection, option).populate(populateOptions)
+        const quiz = await Quiz.findOne({ courseID: id }, projection, option).populate(populateOptions);
+        if (!quiz) throw new Error('Quiz not found')
+        res.status(200).json({ msg: 'Course quiz ', quiz })
+    } catch (err) {
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
+    }
+});
+
+app.get('/api/course/:id/quiz/:quizID', authenticate, (req, res) => {
+    try {
+        const my_details = req.user;
+        const { id, quizID } = req.params;
+        let projection = {};
+        let option = { lean: true };
+        let populateOptions = {
+            path: 'courseID',
+            select: 'title description',
+            model: 'Course'
+        }
+
+        Quiz.findOne({ courseID: id, _id: quizID }, projection, option).populate(populateOptions)
             .then(quiz => (res.status(200).json({ msg: 'Course quiz ', quiz })))
             .catch(err => (res.status(404).json({ msg: 'Not found' })))
         return;
     } catch (err) {
-        return res.status(500).json({ msg: 'Server error', err: err.message })
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
+    }
+});
+
+// GEt if passed or failed
+app.post('/api/quiz/:name/:sheetID/completed/proceed', authenticate, async (req, res) => {
+    try {
+        const { email, id } = req.user;
+        const { name, sheetID } = req.params;
+
+        const authClient = new google.auth.JWT(
+            process.env.GOOGLE_CLIENT_EMAIL,
+            null,
+            process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+            ["https://www.googleapis.com/auth/spreadsheets"]
+        );
+        // const authClient = new google.auth.JWT(
+        //     credentials.process.env.GOOGLE_CLIENT_EMAIL,
+        //     null,
+        //     credentials.process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+        //     ["https://www.googleapis.com/auth/spreadsheets"]
+        // );
+
+        const token = await authClient.authorize();
+        // Set the client credentials
+        authClient.setCredentials(token);
+
+        // await Quiz.findOneAndUpdate({ name, sheetID }, { pass_mark: 5 }, { new: true })
+
+        const quiz = await Quiz.findOne({ name, sheetID })
+
+        // Get the rows
+        const quizResponse = await service.spreadsheets.values.get({
+            auth: authClient,
+            // spreadsheetId: "1bvHPUxjbmGRmfUAxdnGQ836qv4yk670DoaQXJhnOS1U",
+            // spreadsheetId: "1NdJOgtlq030C__p5_8gJjjXLG12R_DBB_AHq-R9ChN0",
+            spreadsheetId: quiz.sheetID,
+            range: "A:Z",
+        });
+
+        const data = quizResponse.data.values;
+
+        // console.log(data, 'data')
+
+        const fin = []
+
+        if (data.length) {
+            log('datasss')
+
+            const emailIndex = data[0].findIndex(d => d == 'Email')
+            log(emailIndex)
+            const scoreIndex = data[0].findIndex(d => d == 'Score')
+            log(scoreIndex)
+
+            // data.shift();
+
+            for (let d of data) {
+                fin.push({ email: d[emailIndex], score: d[scoreIndex] })
+            }
+
+            console.log(fin, 'fin')
+        }
+
+        const result = fin.find(data => data.email === email);
+
+        if (!result) throw new Error('You are yet to attempt the quiz associated with this course')
+
+        const score = result.score.split(' / ')[0]
+
+        log(score, 'score');
+
+        return res.status(200).json({ msg: `Done`, hasTakenQuiz: !!result, quizPassed: score >= quiz.pass_mark ? true : false });
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
     }
 });
 
 app.post('/api/course/:id/register', authenticate, async (req, res) => {
     try {
+        // check if basic quiz is taken
         const my_details = req.user;
         const { id } = req.params;
         const registerationDetails = req.body;
@@ -879,95 +1114,25 @@ app.get('/api/file/:filename', async (req, res) => {
     }
 });
 
-app.post('/api/:courseID/quiz/setup', authenticate, async (req, res) => {
+app.post('/api/course/:courseID/quiz/setup', authenticate, async (req, res) => {
     try {
+        console.log('SETTING')
         const { userType } = req.user;
         if (userType !== 'admin') return res.status(403).json({ msg: 'Only admin can access this!!' });
 
         const { name, link, sheetID, pass_mark } = req.body;
-
+        const { courseID } = req.params;
+        console.log({ name, link, sheetID, pass_mark }, req.body)
         if (!link && !sheetID && !name) throw new Error('Invalid input')
 
-        const quiz = await new Quiz({ name, link, sheetID, pass_mark }).save();
+        const quiz = await new Quiz({ name, link, sheetID, pass_mark, courseID }).save();
 
         return res.status(200).json({ msg: 'Quiz created', quiz });
     } catch (err) {
-        res.status(err.status || 500).json({ msg: 'Server error', err: err.message });
+        console.log(err)
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
     }
 })
-
-// GEt if passed or failed
-app.post('/api/quiz/:name/:sheetID/completed/proceed', authenticate, async (req, res) => {
-    try {
-        const { email } = req.user;
-        const { name, sheetID } = req.params;
-
-        const authClient = new google.auth.JWT(
-            credentials.process.env.GOOGLE_CLIENT_EMAIL,
-            null,
-            credentials.process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-            ["https://www.googleapis.com/auth/spreadsheets"]
-        );
-
-        const token = await authClient.authorize();
-        // Set the client credentials
-        authClient.setCredentials(token);
-
-        // await Quiz.findOneAndUpdate({ name, sheetID }, { pass_mark: 5 }, { new: true })
-
-        const quiz = await Quiz.findOne({ name, sheetID })
-
-        // Get the rows
-        const quizResponse = await service.spreadsheets.values.get({
-            auth: authClient,
-            // spreadsheetId: "1bvHPUxjbmGRmfUAxdnGQ836qv4yk670DoaQXJhnOS1U",
-            spreadsheetId: "1NdJOgtlq030C__p5_8gJjjXLG12R_DBB_AHq-R9ChN0",
-            range: "A:Z",
-        });
-
-        const data = quizResponse.data.values;
-
-        // console.log(data, 'data')
-
-        const fin = []
-
-        if (data.length) {
-            log('datasss')
-
-            const emailIndex = data[0].findIndex(d => d == 'Email')
-            log(emailIndex)
-            const scoreIndex = data[0].findIndex(d => d == 'Score')
-            log(scoreIndex)
-
-            // data.shift();
-
-            for (let d of data) {
-                fin.push({ email: d[emailIndex], score: d[scoreIndex] })
-            }
-
-            console.log(fin)
-        }
-
-        const result = fin.find(data => data.email === email);
-
-        const score = result.score.split(' / ')[0]
-
-        log(score, 'score');
-
-        if (score >= quiz.pass_mark) return res.status(200).json({ msg: `Passed`, result: true });
-        return res.status(200).json({ msg: `Failed`, result: false });
-
-        // Saved the answers
-        // fs.writeFileSync("answers.json", JSON.stringify(answers), function (err, file) {
-        //     if (err) throw err;
-        //     console.log("Saved!");
-        // });
-
-    } catch (error) {
-        // console.log(error)
-        res.status(500).json({ msg: 'Server error', error: error.message });
-    }
-});
 
 app.get('/api/courses/download', async (req, res) => {
     try {

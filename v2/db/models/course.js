@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const courseTypeEnum = [ 'free', 'paid' ];
-const statusEnum = [ 'Upcoming', 'In progress', 'Completed' ];
-const progressEnum = [ 'Not-started', 'In-progress', 'Completed', ]
+const statusEnum = [ 'upcoming', 'application', 'in-progress', 'completed' ];
+const progressEnum = [ 'not-started', 'in-progress', 'completed', ]
 
 const courseSchema = new mongoose.Schema({
     creatorID: { type: mongoose.Types.ObjectId, required: true, ref: 'User' },
@@ -16,22 +16,26 @@ const courseSchema = new mongoose.Schema({
     instructors: [ {
         instructor: { type: mongoose.Types.ObjectId, ref: 'User' }
     } ],
-    start_date: {type: Date},
-    end_date: {type: Date},
+    start_date: { type: Date },
+    end_date: { type: Date },
     duration: String,
     location: String,
     capacity: Number,
 	courseType: { type: String, required: true, enum: courseTypeEnum, default: 'paid' },
     amount: { type: Number, default: 0},
-    status: { type: String, enum: statusEnum, default: 'Upcoming'},
+    status: { type: String, enum: statusEnum, default: 'upcoming'},
+    deadline: { type: Date },
     // certificateReady: Boolean,
     // enrolled: [ { type: mongoose.Types.ObjectId, default: [] } ],
     enrolled: [{
-        userID: { type: mongoose.Types.ObjectId, ref: 'User' }, 
+        userID: { type: mongoose.Types.ObjectId, ref: 'User', required: true }, 
         paid: { type: Boolean, required: true, default: false},
-        progress: { type: String, enum: progressEnum, default: 'Not-started' }
+        progress: { type: String, enum: progressEnum, default: 'not-started' },
+        grade: { type: String },
+        score: { type: Number }
     }],
     enrollment_count: { type: Number, default: 0 },
+    quizID: { type: mongoose.Types.ObjectId, ref: 'Quiz' },
     createdDate: { type: Number, default: Date.now },
 })
 

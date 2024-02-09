@@ -4,3 +4,4 @@ requests.rest
 user.json
 rough
 *.rest
+credential.json

@@ -1,7 +1,7 @@
 const Course = require('../models/course');
 
 const courseDB = {
-    getAllCourses: async () => {
+    getAllCourses: async (condition, projection = {}, options = { lean: true}) => {
         try {
             const courses = await Course.find();
 
@@ -11,9 +11,10 @@ const courseDB = {
         }
     },
 
-    getACourse: async (id, projection = {}, options = {}, populateOptions = {}) => {
+    getACourse: async (id, projection = {}, options = {}) => {
         try {
-            const course = await Course.findById(id, projection, options).populate(populateOptions).exec()
+            // const course = await Course.findById(id, projection, options).populate(populateOptions).exec()
+            const course = await Course.findById(id, projection, options)
 
             return course;
         } catch (error) {
@@ -39,7 +40,15 @@ const courseDB = {
         } catch (error) {
             
         }
-    }
+    },
+
+    populateData: async(query, projection, options, populateOptiions) => {
+        // return model.populate(populateOptiions).exec()
+        return Course
+			.find(query, projection, options)
+			.populate(populateOptiions)
+			.exec();
+    },
 }
 
 

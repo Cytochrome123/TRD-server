@@ -64,8 +64,8 @@ const authValidations = {
                     const files = req.files;
     
                     const exists = await authDBValidator.doesUserExist(condition, options)
-                    console.log('EXISYSTSTS')
                     if (exists) {
+                        console.log('EXISYSTSTS')
                         await indexDB.deleteImage(res, gfs(), files.image[0].id);
                         throw new Error('Account already exists')
                     }
@@ -83,14 +83,16 @@ const authValidations = {
             isInt: true,
         },
         image: {
-            in: ['file'],
+            in: ['body'],
             notEmpty: true,
             custom: {
                 options: async (value, { req, res }) => {
                     console.log(value)
                     console.log(req.files.image, 'validation')
                     // if(req.files.passport[0].mimetype === 'image/jpeg') return true
-                    if (!req.files.image) throw new Error('Please upload ur profile pictire')
+                    if (!req.files || !req.files.image) {
+                        throw new Error('Please upload your profile picture');
+                    }
     
                     const files = req.files;
                     if (files.image[0].size > 5000000) {
@@ -98,7 +100,7 @@ const authValidations = {
                         if (del) throw new Error(`${del} \n\n File shld not exceed 5mb`);
                         throw new Error('File shld not exceed 5mb');
                     };
-    
+    console.log('hbfdhvbdhj')
                     req.body['image'] = { imageID: files.image[0].id, path: files.image[0].filename };
                     // req.body['image'] = { ...req.body.image, path: files.image[0].filename };
                 }
@@ -154,14 +156,15 @@ const authValidations = {
                     const {email} = req.query
                     const user = req.user;
 
-                    if(!user) throw new Error('User not found')
+                    if(!user.id) throw new Error('User not found')
 
-                    console.log(factory.otpMap.size)
-                    const storedOTP = factory.otpMap.get(email);
+                    // console.log(factory.getOtpMap.size)
+                    const storedOTP = factory.getOtp(email);
+                    console.log(storedOTP, 'stored')
 
-                    if (otp !== storedOTP) throw new Error('Invalid OTP');
+                    if (+otp !== storedOTP) throw new Error('Invalid OTP');
 
-                    factory.otpMap.delete(email);
+                    factory.removeOtp(email);
                 }
             }
         },

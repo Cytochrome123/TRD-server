@@ -14,17 +14,53 @@ const userDB = {
 
     contact: async (name, email, message) => {
         try {
-            const message = await new Message({ name, email, message})
+            const message = await new Message({ name, email, message })
 
             return message
         } catch (error) {
             throw error
         }
+    },
+
+    deleteUser: async (condition) => {
+        try {
+            const user = User.findOneAndDelete(condition, { new: true, lean: true })
+
+            return user;
+        } catch (error) {
+            throw error
+        }
+    },
+
+    updateUser: async (condition, update, options = {}) => {
+        try {
+            const updated = await User.findOneAndUpdate(condition, update, options);
+
+            return updated;
+        } catch (error) {
+            throw error
+        }
+    },
+
+    populateData: async(query, projection, options, populateOptiions) => {
+        // return model.populate(populateOptiions).exec()
+        return User
+			.find(query, projection, options)
+			.populate(populateOptiions)
+			.exec();
+    },
+}
+
+const userDBValidator = {
+    isUser: async (condition, options = {}) => {
+        try {
+            const user = await User.findOne(condition, options);
+
+            return user;
+        } catch (error) {
+            throw error;
+        }
     }
 }
 
-// const courseDBValidator = {
-//     does
-// }
-
-module.exports = { userDB };
+module.exports = { userDB, userDBValidator };

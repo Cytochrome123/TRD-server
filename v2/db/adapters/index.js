@@ -1,4 +1,4 @@
-const getGfs = require('..')
+// const getGfs = require('..')
 
 const indexDB = {
     deleteImage: async (res, gfs, id) => {
@@ -26,7 +26,11 @@ const indexDB = {
 
     aggregateData: async(model, pipeline, options = {}) => {
         return model.aggregate(pipeline, options);
-    }
+    },
+
+    populateData: async(model, populateOptiions) => {
+        return model.populate(populateOptiions).exec()
+    },
 }
 
 module.exports = { indexDB };
