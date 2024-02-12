@@ -1026,60 +1026,9 @@ app.post('/api/quiz/:name/:sheetID/completed/proceed', authenticate, async (req,
         const { email, id } = req.user;
         const { name, sheetID } = req.params;
 
-        const authClient = new google.auth.JWT(
-            process.env.GOOGLE_CLIENT_EMAIL,
-            null,
-            process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-            ["https://www.googleapis.com/auth/spreadsheets"]
-        );
-        // const authClient = new google.auth.JWT(
-        //     credentials.process.env.GOOGLE_CLIENT_EMAIL,
-        //     null,
-        //     credentials.process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-        //     ["https://www.googleapis.com/auth/spreadsheets"]
-        // );
-
-        const token = await authClient.authorize();
-        // Set the client credentials
-        authClient.setCredentials(token);
-
-        // await Quiz.findOneAndUpdate({ name, sheetID }, { pass_mark: 5 }, { new: true })
-
         const quiz = await Quiz.findOne({ name, sheetID })
 
-        // Get the rows
-        const quizResponse = await service.spreadsheets.values.get({
-            auth: authClient,
-            // spreadsheetId: "1bvHPUxjbmGRmfUAxdnGQ836qv4yk670DoaQXJhnOS1U",
-            // spreadsheetId: "1NdJOgtlq030C__p5_8gJjjXLG12R_DBB_AHq-R9ChN0",
-            spreadsheetId: quiz.sheetID,
-            range: "A:Z",
-        });
-
-        const data = quizResponse.data.values;
-
-        // console.log(data, 'data')
-
-        const fin = []
-
-        if (data.length) {
-            log('datasss')
-
-            const emailIndex = data[0].findIndex(d => d == 'Email')
-            log(emailIndex)
-            const scoreIndex = data[0].findIndex(d => d == 'Score')
-            log(scoreIndex)
-
-            // data.shift();
-
-            for (let d of data) {
-                fin.push({ email: d[emailIndex], score: d[scoreIndex] })
-            }
-
-            console.log(fin, 'fin')
-        }
-
-        const result = fin.find(data => data.email === email);
+        const result = await checkResult(quiz, email);
 
         if (!result) throw new Error('You are yet to attempt the quiz associated with this course')
 
@@ -1114,7 +1063,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
         // check if basic quiz is taken && if passed
         const basicQuiz = await Quiz.findOne({ courseID: course.basicCourseID });
 
-        const result = await checkResult(basicQuiz);
+        const result = await checkResult(basicQuiz, my_details.email);
 
         if (!result) throw new Error('You are yet to attempt the basic quiz');
 
@@ -1404,7 +1353,7 @@ async function deleteImage(res, gfs, id) {
 
 }
 
-async function checkResult(quiz) {
+async function checkResult(quiz, email) {
     const { sheetID } = quiz;
     const authClient = new google.auth.JWT(
         process.env.GOOGLE_CLIENT_EMAIL,
@@ -1461,6 +1410,17 @@ async function checkResult(quiz) {
 
     return result;
 }
+
+async function updateDB() {
+    await User.updateMany({}, { $set: { verification_code: null }});
+    await User.updateMany({}, { $set: { is_verified: false }});
+    await User.updateMany({}, { $set: { password_otp: null }});
+    await Course.updateMany({}, { $set: { testID: null }});
+
+    console.log('DONE');
+};
+
+// updateDB()
 
 app.listen(process.env.PORT || 5001, err => {
     if (err) console.log(err);
