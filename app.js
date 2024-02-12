@@ -8,6 +8,7 @@ sgMail.setApiKey(process.env.SG_API_KEY);
 const mongoose = require('mongoose');
 const axios = require('axios');
 const exceljs = require('exceljs');
+const { isAfter } = require('date-fns');
 const { validationResult } = require('express-validator');
 
 const User = require('./models/user');
@@ -27,6 +28,8 @@ const { log } = require('console');
 
 const app = express();
 
+const PROD_CLIENT_URL = 'http://trd.ui.edu.ng'
+// const PROD_CLIENT_URL = 'http://localhost:3000'
 
 // mongoose.connect(process.env.MONGO_URL)
 //     .then(() => (console.log('Mongoose Connection is Successful')))
@@ -81,7 +84,7 @@ app.post('/seed/course', async (req, res) => {
 });
 // AUTH
 
-app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, async (req, res) => {
+app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, async (req, res, next) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -108,27 +111,48 @@ app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, asyn
         let option = { lean: true };
 
         let exists = await User.findOne(condition, option);
-        if (!exists) {
-            userDetails.password = generateHashPassword(userDetails.password);
-            new User(userDetails).save()
-                .then(user => {
-                    return res.json({ status: 201, msg: 'Account created!', user });
-                })
-                .catch(err => {
-                    return res.json({
-                        status: 400,
-                        msg: err
-                    });
-                })
-            return;
+
+        if (exists) {
+            await deleteImage(res, gfs, files.image[0].id);
+            return res.json({
+                status: 409,
+                msg: 'Account already exists'
+            });
         }
-        await deleteImage(res, gfs, files.image[0].id);
-        return res.json({
-            status: 409,
-            msg: 'Account already exists'
-        });
+
+        userDetails.password = generateHashPassword(userDetails.password);
+        const pin = Math.floor(Math.pow(10, 3) + Math.random() * (9 * Math.pow(10, 3)));
+        const verification_code = jwt.sign({ code: pin, email: userDetails.email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+        userDetails['verification_code'] = verification_code;
+
+        const verification_link = `${PROD_CLIENT_URL}/auth?code=${pin}&email=${userDetails.email}`;
+        const user = await new User(userDetails).save();
+
+        if (!user) throw new Error('Account creation failed');
+
+        const msg = {
+            to: user.email,
+            from: 'hoismail2017@gmail.com',
+            subject: 'Please verify you email',
+            // text: `Use this to verify: ${verification_link}, expires in 15mins`,
+            // content: `Use this to verify: ${verification_link}, expires in 15mins`,
+            content: [
+                {
+                    type: 'text/html',
+                    value: `<p>Use this to verify: ${verification_link}, expires in 15mins<p>`
+                }
+            ],
+        };
+        const sendMsg = await sgMail.send(msg);
+        console.log(verification_link)
+        if (!sendMsg) {
+            console.log(`OTP sent to ${email}`);
+            next();
+        }
+
+        return res.json({ status: 201, msg: 'Account created!, Kindly check your mail to verify your account. Thanks', user });
     } catch (err) {
-        return res.status(500).json({ msg: 'Server error', err: err.message });
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
     }
 });
 
@@ -137,41 +161,121 @@ app.post('/api/signin', async (req, res, next) => {
         const { email, password } = req.body;
 
         let user = await User.findOne({ email });
-        if (user) {
-            let correlates = compareHashedPassword(password, user.password);
-            if (correlates) {
+        let correlates = compareHashedPassword(password, user.password);
 
-                const OTP = Math.floor(100000 + Math.random() * 900000);
-                otpMap.set(user.email, OTP);
-                console.log(OTP);
-                console.log(otpMap)
+        if (!user || !correlates) throw new Error("Invalid credentials!")
+
+        if (!user.is_verified) {
+            const decode = jwt.decode(user.verification_code);
+
+            if (!decode || isAfter(new Date(), new Date((decode)?.exp * 1000))) {
+                const pin = Math.floor(Math.pow(10, 3) + Math.random() * (9 * Math.pow(10, 3)));
+                const verification_code = jwt.sign({ code: pin, email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+                const verification_link = `${PROD_CLIENT_URL}/auth?code=${pin}&email=${email}`;
+
                 const msg = {
                     to: user.email,
                     from: 'hoismail2017@gmail.com',
-                    subject: 'Your OTP for login',
-                    text: `Your OTP is: ${OTP}`,
+                    subject: 'Please verify you email',
+                    // text: `Use this to verify: ${verification_link}, expires in 15mins`,
+                    // content: `Use this to verify: ${verification_link}, expires in 15mins`,
+                    content: [
+                        {
+                            type: 'text/html',
+                            value: `<p>Use this to verify: ${verification_link}, expires in 15mins<p>`
+                        }
+                    ],
                 };
-                sgMail.send(msg)
-                    .then(() => {
-                        console.log(`OTP sent to ${user.email}`);
-                        return next(null, user);
-                    })
-                    .catch(err => {
-                        console.error(`Error sending OTP to ${user.email}`, err);
-                        return next(err);
-                    });
+                const sendMsg = await sgMail.send(msg);
+                if (!sendMsg) {
+                    console.log(`OTP sent to ${email}`);
+                    next();
+                }
 
-                const accessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
-                return res.status(200).json({ msg: 'Check your mail or phone for an OTP code', accessToken });
-            }
-            return res.status(401).json({ msg: 'Incorrect password' })
+                await User.findOneAndUpdate({ email }, { verification_code });
+            };
+
+            throw new Error("Email account not verified, please check your email for a verification link")
         }
-        return res.status(401).json({ msg: 'Your account does\'nt exist' })
+
+        const accessToken = jwt.sign({ id: user._id, firstName: user.firstName, email: user.email, userType: user.userType, courses: user.courses }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' })
+
+        res.status(200).json({ msg: 'Logged In', accessToken, user });
     } catch (err) {
-        return res.status(500).json({ msg: 'Server error', err: err.message })
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
     }
 
 });
+
+app.post('/api/email/verify', async (req, res) => {
+    try {
+        const { email, code } = req.body;
+
+        if (!email && !code) throw new Error('Invalid credentials');
+
+        const user = await User.findOne({ email });
+
+        if (!user) throw new Error('Account not found');
+        console.log(user.verification_code)
+        console.log(jwt.decode(user.verification_code))
+        const { code: raw } = jwt.decode(user.verification_code);
+        console.log(typeof code)
+        console.log(typeof raw)
+        if (!raw) throw new Error("Verification code expired!")
+
+        if (raw !== +code) throw new Error("Invalid verification code");
+
+        await User.findOneAndUpdate({ email }, { is_verified: true, verification_code: null });
+
+        res.status(200).json({ msg: 'Successful', success: true });
+    } catch (err) {
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
+    }
+});
+
+app.get('/api/email', async (req, res, next) => {
+    try {
+        const { email } = req.body;
+
+        const pin = Math.floor(Math.pow(10, 3) + Math.random() * (9 * Math.pow(10, 3)));
+        const verification_code = jwt.sign({ code: pin, email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
+        const verification_link = `${PROD_CLIENT_URL}/auth?code=${pin}&email=${email}`;
+
+        const user = await User.findOne({ email });
+
+        if (!user) throw new Error('Account not found');
+
+        if (user && !user.is_verified) {
+            await User.findOneAndUpdate({ email }, { verification_code });
+
+            const msg = {
+                to: user.email,
+                from: 'hoismail2017@gmail.com',
+                subject: 'Please verify you email',
+                // text: `Use this to verify: ${verification_link}, expires in 15mins`,
+                // content: `Use this to verify: ${verification_link}, expires in 15mins`,
+                content: [
+                    {
+                        type: 'text/html',
+                        value: `<p>Use this to verify: ${verification_link}, expires in 15mins<p>`
+                    }
+                ],
+            };
+            const sendMsg = await sgMail.send(msg);
+            if (!sendMsg) {
+                console.log(`OTP sent to ${email}`);
+                next();
+            }
+
+            return res.status(200).json({ msg: 'Successful', success: true });
+        };
+        throw new Error('Your account is already verified!!!');
+
+
+    } catch (err) {
+        res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
+    }
+})
 
 app.post('/api/verify', authenticate, (req, res) => {
     try {
@@ -474,7 +578,7 @@ app.put('/api/course/:id/status', authenticate, async (req, res, next) => { // y
                 for (let student of students) {
                     stdEmails.push(student.email);
                 }
-    
+
                 const msg = {
                     subject: `The wait has finally ended`,
                     text: `${populatedCourse.title} is now open to application, kindly get yourselves enrolled before it closes. The deadline for application is ${populatedCourse.deadline}. Thanks`
@@ -992,14 +1096,12 @@ app.post('/api/quiz/:name/:sheetID/completed/proceed', authenticate, async (req,
 
 app.post('/api/course/:id/register', authenticate, async (req, res) => {
     try {
-        // check if basic quiz is taken
         const my_details = req.user;
         const { id } = req.params;
         const registerationDetails = req.body;
 
         const projection = { password: 0, instructor_id: 0, capacity: 0, enrollment_count: 0 }
         const option = { lean: true };
-        console.log({ my_details });
         const course = await Course.findById(id, projection, option);
         console.log(course);
 
@@ -1007,7 +1109,20 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
 
         const available = new Date(course.deadline) >= new Date()
 
-        if (!available) throw new Error('Sorry, the deadline for enrollment has passed. Kindly check back or contact the organizers for more information. Thanks')
+        if (!available) throw new Error('Sorry, the deadline for enrollment has passed. Kindly check back or contact the organizers for more information. Thanks');
+
+        // check if basic quiz is taken && if passed
+        const basicQuiz = await Quiz.findOne({ courseID: course.basicCourseID });
+
+        const result = await checkResult(basicQuiz);
+
+        if (!result) throw new Error('You are yet to attempt the basic quiz');
+
+        const score = result.score.split(' / ')[0]
+
+        log(score, 'score');
+
+        if (score < basicQuiz.pass_mark) throw new Error('You cannot enrol for this course at the moment, as you did not meet the requirement foor it. Kindly take he basic course and try again later. Thanks');
 
         if (course) {
             // if already registered for the coiurse
@@ -1287,6 +1402,64 @@ async function deleteImage(res, gfs, id) {
     }
 
 
+}
+
+async function checkResult(quiz) {
+    const { sheetID } = quiz;
+    const authClient = new google.auth.JWT(
+        process.env.GOOGLE_CLIENT_EMAIL,
+        null,
+        process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+        ["https://www.googleapis.com/auth/spreadsheets"]
+    );
+    // const authClient = new google.auth.JWT(
+    //     credentials.process.env.GOOGLE_CLIENT_EMAIL,
+    //     null,
+    //     credentials.process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    //     ["https://www.googleapis.com/auth/spreadsheets"]
+    // );
+
+    const token = await authClient.authorize();
+    // Set the client credentials
+    authClient.setCredentials(token);
+
+    // const quiz = await Quiz.findOne({ name, sheetID })
+
+    // Get the rows
+    const quizResponse = await service.spreadsheets.values.get({
+        auth: authClient,
+        // spreadsheetId: "1bvHPUxjbmGRmfUAxdnGQ836qv4yk670DoaQXJhnOS1U",
+        // spreadsheetId: "1NdJOgtlq030C__p5_8gJjjXLG12R_DBB_AHq-R9ChN0",
+        spreadsheetId: sheetID,
+        range: "A:Z",
+    });
+
+    const data = quizResponse.data.values;
+
+    // console.log(data, 'data')
+
+    const fin = []
+
+    if (data.length) {
+        log('datasss')
+
+        const emailIndex = data[0].findIndex(d => d == 'Email')
+        log(emailIndex)
+        const scoreIndex = data[0].findIndex(d => d == 'Score')
+        log(scoreIndex)
+
+        // data.shift();
+
+        for (let d of data) {
+            fin.push({ email: d[emailIndex], score: d[scoreIndex] })
+        }
+
+        console.log(fin, 'fin')
+    }
+
+    const result = fin.find(data => data.email === email);
+
+    return result;
 }
 
 app.listen(process.env.PORT || 5001, err => {

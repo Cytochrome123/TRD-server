@@ -36,7 +36,7 @@ const courseSchema = new mongoose.Schema({
     }],
     enrollment_count: { type: Number, default: 0 },
     basicCourseID: { type: mongoose.Types.ObjectId, ref: 'Course' },
-    // quizID: { type: mongoose.Types.ObjectId, ref: 'Quiz' },
+    testID: { type: mongoose.Types.ObjectId, ref: 'Quiz' },
     // quiz: [{
     //     quizID: { type: mongoose.Types.ObjectId, ref: 'Quiz' },
     //      basic: Boolean

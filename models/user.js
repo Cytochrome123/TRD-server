@@ -15,12 +15,15 @@ const userSchema = new mongoose.Schema({
 	phoneNumber: { type: String, required: true },
 	userType: { type: String, required: true, enum: userTypeEnum, default: 'user' },
 	OTP: String,
-	resetToken: String,
-	resetTokenExpiration: String,
+	// resetToken: String,
+	// resetTokenExpiration: String,
 	courses: [{
         courseID: { type: mongoose.Types.ObjectId, ref: 'Course' },
 		progress: { type: String, enum: progressEnum, default: 'not-started' }
     }],
+	verification_code: String,
+	is_verified: { type: Boolean, required: true, default: false },
+	password_otp: String,
 	createdDate: { type: Number, default: Date.now },
 	lastLogin: { type: Number, default: null },
 });
