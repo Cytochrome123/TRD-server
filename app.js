@@ -28,9 +28,6 @@ const { log } = require('console');
 
 const app = express();
 
-const PROD_CLIENT_URL = 'http://trd.ui.edu.ng'
-// const PROD_CLIENT_URL = 'http://localhost:3000'
-
 // mongoose.connect(process.env.MONGO_URL)
 //     .then(() => (console.log('Mongoose Connection is Successful')))
 //     .catch(err => (console.log('Mongo error ', err)));
@@ -239,7 +236,8 @@ app.get('/api/email', async (req, res, next) => {
 
         const pin = Math.floor(Math.pow(10, 3) + Math.random() * (9 * Math.pow(10, 3)));
         const verification_code = jwt.sign({ code: pin, email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
-        const verification_link = `${PROD_CLIENT_URL}/auth?code=${pin}&email=${email}`;
+        const { ENV, PROD_CLIENT_URL, DEV_CLIENT_URL, LOCAL_CLIENT_URL } = process.env;
+        const verification_link = `${ENV == 'prod' ? PROD_CLIENT_URL : ENV == 'dev' ? DEV_CLIENT_URL : LOCAL_CLIENT_URL}/auth?code=${pin}&email=${email}`;
 
         const user = await User.findOne({ email });
 
