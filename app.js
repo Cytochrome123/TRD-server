@@ -1063,7 +1063,8 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
         if (!available) throw new Error('Sorry, the deadline for enrollment has passed. Kindly check back or contact the organizers for more information. Thanks');
 
         // check if basic quiz is taken && if passed
-        const basicQuiz = await Quiz.findOne({ courseID: course.basicCourseID });
+        // const basicQuiz = await Quiz.findOne({ courseID: course.basicCourseID });
+        // const basicQuiz = await Quiz.findOne({ courseID: course._id });
 
         const result = await checkResult(basicQuiz, my_details.email);
 
