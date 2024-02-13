@@ -124,6 +124,7 @@ app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, asyn
 
         const { ENV, PROD_CLIENT_URL, DEV_CLIENT_URL, LOCAL_CLIENT_URL } = process.env;
         const verification_link = `${ENV == 'prod' ? PROD_CLIENT_URL : ENV == 'dev' ? DEV_CLIENT_URL : LOCAL_CLIENT_URL}/auth?code=${pin}&email=${email}`;
+        
         const user = await new User(userDetails).save();
 
         if (!user) throw new Error('Account creation failed');
@@ -144,7 +145,7 @@ app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, asyn
         const sendMsg = await sgMail.send(msg);
         console.log(verification_link)
         if (!sendMsg) {
-            console.log(`OTP sent to ${email}`);
+            console.log(`OTP sent to ${user.email}`);
             next();
         }
 
