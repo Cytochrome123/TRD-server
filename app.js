@@ -930,8 +930,7 @@ app.get('/api/course/:id/quiz-status/:quizId', authenticate, async (req, res) =>
 
         const quiz = await Quiz.findById(quizId);
         if (!quiz) throw new Error('Quiz not found');
-console.log(process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"))
-console.log(process.env.GOOGLE_PRIVATE_KEY)
+
         const authClient = new google.auth.JWT(
             process.env.GOOGLE_CLIENT_EMAIL,
             null,
