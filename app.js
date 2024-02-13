@@ -122,7 +122,7 @@ app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, asyn
         const verification_code = jwt.sign({ code: pin, email: userDetails.email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
         userDetails['verification_code'] = verification_code;
 
-        const verification_link = `${PROD_CLIENT_URL}/auth?code=${pin}&email=${userDetails.email}`;
+        const verification_link = `${ENV == 'prod' ? PROD_CLIENT_URL : ENV == 'dev' ? DEV_CLIENT_URL : LOCAL_CLIENT_URL}/auth?code=${pin}&email=${email}`;
         const user = await new User(userDetails).save();
 
         if (!user) throw new Error('Account creation failed');
@@ -168,7 +168,7 @@ app.post('/api/signin', async (req, res, next) => {
             if (!decode || isAfter(new Date(), new Date((decode)?.exp * 1000))) {
                 const pin = Math.floor(Math.pow(10, 3) + Math.random() * (9 * Math.pow(10, 3)));
                 const verification_code = jwt.sign({ code: pin, email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
-                const verification_link = `${PROD_CLIENT_URL}/auth?code=${pin}&email=${email}`;
+                const verification_link = `${ENV == 'prod' ? PROD_CLIENT_URL : ENV == 'dev' ? DEV_CLIENT_URL : LOCAL_CLIENT_URL}/auth?code=${pin}&email=${email}`;
 
                 const msg = {
                     to: user.email,
