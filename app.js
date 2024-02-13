@@ -1064,7 +1064,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
 
         // check if basic quiz is taken && if passed
         // const basicQuiz = await Quiz.findOne({ courseID: course.basicCourseID });
-        // const basicQuiz = await Quiz.findOne({ courseID: course._id });
+        const basicQuiz = await Quiz.findOne({ courseID: course._id });
 
         const result = await checkResult(basicQuiz, my_details.email);
 
