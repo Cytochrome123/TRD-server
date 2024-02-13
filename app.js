@@ -123,7 +123,7 @@ app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, asyn
         userDetails['verification_code'] = verification_code;
 
         const { ENV, PROD_CLIENT_URL, DEV_CLIENT_URL, LOCAL_CLIENT_URL } = process.env;
-        const verification_link = `${ENV == 'prod' ? PROD_CLIENT_URL : ENV == 'dev' ? DEV_CLIENT_URL : LOCAL_CLIENT_URL}/auth?code=${pin}&email=${email}`;
+        const verification_link = `${ENV == 'prod' ? PROD_CLIENT_URL : ENV == 'dev' ? DEV_CLIENT_URL : LOCAL_CLIENT_URL}/auth?code=${pin}&email=${userDetails.email}`;
         
         const user = await new User(userDetails).save();
 
@@ -151,6 +151,7 @@ app.post('/api/signup', GridFsConfig.uploadMiddleware, validation.register, asyn
 
         return res.json({ status: 201, msg: 'Account created!, Kindly check your mail to verify your account. Thanks', user });
     } catch (err) {
+        console.log(err)
         res.status(500).json({ msg: err.message ? err.message : 'Server error', error: err.message });
     }
 });
