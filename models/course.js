@@ -12,7 +12,7 @@ const courseSchema = new mongoose.Schema({
     },
 	title: { type: String, required: true },
     description: { type: String, required: true },
-    // instructors: [{ instructorID: { type: mongoose.Types.ObjectId, ref: 'User' } }],
+    category: { type: String, default: 'I.C.T' },
     instructors: [ {
         instructor: { type: mongoose.Types.ObjectId, ref: 'User' }
     } ],
@@ -25,29 +25,11 @@ const courseSchema = new mongoose.Schema({
     amount: { type: Number, default: 0},
     status: { type: String, enum: statusEnum, default: 'upcoming'},
     deadline: { type: Date },
-    // certificateReady: Boolean,
-    // enrolled: [ { type: mongoose.Types.ObjectId, default: [] } ],
-    enrolled: [{
-        userID: { type: mongoose.Types.ObjectId, ref: 'User' }, 
-        paid: { type: Boolean, required: true, default: false},
-        progress: { type: String, enum: progressEnum, default: 'not-started' },
-        grade: { type: String },
-        score: { type: Number }
-    }],
     enrollment_count: { type: Number, default: 0 },
-    basicCourseID: { type: mongoose.Types.ObjectId, ref: 'Course' },
-    testID: { type: mongoose.Types.ObjectId, ref: 'Quiz' },
-    // quiz: [{
-    //     quizID: { type: mongoose.Types.ObjectId, ref: 'Quiz' },
-    //      basic: Boolean
-    // }],
-    // quiz: {
-    //     ID: '',
-    //     students: []
-    // },
+    isModuleZero: { type: Boolean, required: true, default: false },
     createdDate: { type: Number, default: Date.now },
-})
+});
 
-// courseSchema.plugin(passportLocalMongoose)
+courseSchema.index({ isModuleZero: 1 }, { unique: true, partialFilterExpression: { isModuleZero: true }, name: 'duplicate modeule 0' });
 
 module.exports = mongoose.model('Course', courseSchema);

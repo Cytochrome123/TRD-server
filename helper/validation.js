@@ -25,6 +25,7 @@ const course = [
     body('location', 'Location is required').not().isEmpty(),
     body('capacity', 'Capacity is required').not().isEmpty(),
     body('amount', 'Amount is required').not().isEmpty(),
+    body('isModuleZero', 'Amount is required').not().isEmpty(),
     check('image').custom( ( value, {req} ) => {
         console.log(value)
         console.log(req.files.image, 'validation')
