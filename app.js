@@ -870,7 +870,7 @@ console.log(attempt, 'attempt')
         //  push, update user into the course model
 
         // course.enrolled.map(registrations => )
-        const registered = await Enrollment.findOne({ user_id: my_details.id, course_id: course.id });
+        const registered = await Enrollment.findOne({ user_id: my_details.id, course_id: course._id });
 
         let eligible = true;
         if(registered && registered.passed) eligible = false;
@@ -879,7 +879,7 @@ console.log(attempt, 'attempt')
 
         if (registered && !eligible) throw new Error('You\'ve enrolledd for this before');
 
-        const register = await new Enrollment({ user_id: my_details.id, course_id: course.id }).save();
+        const register = await new Enrollment({ user_id: my_details.id, course_id: course._id }).save();
         if (!register) throw new Error('Enrollment failed');
 
         await Course.findByIdAndUpdate(course.id, { enrollment_count: course.enrollment_count++ }, { new: true });
