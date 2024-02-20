@@ -842,7 +842,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
         const { id } = req.params;
         const registerationDetails = req.body;
 
-        const projection = { password: 0, instructor_id: 0, capacity: 0, enrollment_count: 0 }
+        const projection = { password: 0, instructor_id: 0, capacity: 0 }
         const option = { lean: true };
 
         const course = await Course.findById(id, projection, option);
