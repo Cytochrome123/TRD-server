@@ -872,10 +872,10 @@ console.log(attempt, 'attempt')
         // course.enrolled.map(registrations => )
         const registered = await Enrollment.findOne({ user_id: my_details.id, course_id: course.id });
 
-        const eligible = registered.passed === false;
+        let eligible = true;
+        if(registered && registered.passed) eligible = false;
 
         console.log(registered, 'registered');
-        console.log(eligible, 'eligible');
 
         if (registered && !eligible) throw new Error('You\'ve enrolledd for this before');
 
