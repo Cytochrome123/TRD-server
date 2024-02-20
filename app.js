@@ -859,7 +859,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
         const quiz = await Quiz.findOne({ type: 'entry' })
         if (!quiz) throw new Error('Entry quiz not found');
 
-        const attempt = await Quiz_Attempt.findOne({ user_id: id, quiz_id: quiz.id });
+        const attempt = await Quiz_Attempt.findOne({ user_id: my_details.id, quiz_id: quiz.id });
 
         if (!attempt) throw new Error('You are yet to attempt the entry quiz');
 
