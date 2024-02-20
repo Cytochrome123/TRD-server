@@ -860,7 +860,7 @@ app.post('/api/course/:id/register', authenticate, async (req, res) => {
         if (!quiz) throw new Error('Entry quiz not found');
 
         const attempt = await Quiz_Attempt.findOne({ user_id: my_details.id, quiz_id: quiz.id });
-
+console.log(attempt, 'attempt')
         if (!attempt) throw new Error('You are yet to attempt the entry quiz');
 
         if (!attempt.passed && !course.isModuleZero) throw new Error('You cannot enrol for this course at the moment, as you did not meet the requirements. Kindly take module 0 to be eligible to enrol to any courses later. Thanks');
