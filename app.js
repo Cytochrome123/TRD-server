@@ -885,7 +885,7 @@ console.log(attempt, 'attempt')
         await Course.findByIdAndUpdate(course.id, { enrollment_count: course.enrollment_count++ }, { new: true });
 
         if (my_details.userType === 'user') {
-            let renewToken = jwt.sign({ id: my_details.id, firstName: my_details.firstName, lastName: my_details.firstName, email: my_details.email, userType: my_details.userType }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' });
+            let renewToken = jwt.sign({ id: my_details.id, firstName: my_details.firstName, lastName: my_details.firstName, email: my_details.email, userType: 'student' }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' });
             return res.status(201).json({ data: { msg: 'Course enrollment sucessfull', renewToken } });
         }
 
