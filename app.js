@@ -1109,8 +1109,8 @@ app.get('/api/me', authenticate, async (req, res) => {
     try {
         const { email, id } = req.user;
 
-        const me = await User.findById(id);
-        if (!me) throw new Error('Error ffething profile');
+        const meee = await User.findById(id);
+        if (!meee) throw new Error('Error ffething profile');
 
         const populateOptions = {
             path: 'course_id',
@@ -1128,7 +1128,12 @@ app.get('/api/me', authenticate, async (req, res) => {
         const courses = await Enrollment.find({ user_id: id }).populate(populateOptions).exec();
         if (!courses) throw new Error('Could not get users registered courses');
 
-        me['enrolled_courses'] = courses;
+
+        const me = {
+            ...meee,
+            enrolled_courses: courses
+        }
+        // me['enrolled_courses'] = courses;
 
         res.status(200).json({ msg: 'Registered courses!!', me });
     } catch (err) {
