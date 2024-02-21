@@ -1125,7 +1125,7 @@ app.get('/api/me', authenticate, async (req, res) => {
             model: 'Course'
         };
 
-        const courses = await Enrollment.find({ user_id: my_details.id }).populate(populateOptions).exec();
+        const courses = await Enrollment.find({ user_id: id }).populate(populateOptions).exec();
         if (!courses) throw new Error('Could not get users registered courses');
 
         me['enrolled_courses'] = courses;
