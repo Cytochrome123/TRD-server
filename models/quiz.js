@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const type = [ 'entry', 'end' ];
 
 const quizSchema = new mongoose.Schema({
-    course_id: { type: mongoose.Types.ObjectId, required: true, unique: true, ref: 'Course' },
+    course_id: { type: mongoose.Types.ObjectId, required: true, ref: 'Course' },
 	name: { type: String, required: true, unique: true },
     link: { type: String, required: true },
     sheet_id: { type: String, required: true },
