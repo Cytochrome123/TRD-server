@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const enrollmentSchema = new mongoose.Schema({
-    user_id: { type: mongoose.Types.ObjectId, required: true, unique: true, ref: 'User' },
-    course_id: { type: mongoose.Types.ObjectId, required: true, unique: true, ref: 'Course' },
+    user_id: { type: mongoose.Types.ObjectId, required: true, ref: 'User' },
+    course_id: { type: mongoose.Types.ObjectId, required: true, ref: 'Course' },
     passed: { type: Boolean, required: true, default: false },
     completed: { type: Boolean, required: true, default: false },
 })
