@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { width: 600px; margin: auto; padding: 20px; }
+        .header { background-color: #f3f3f3; padding: 10px; text-align: center; }
+        .order-summary { background-color: #f9f9f9; padding: 20px; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        .footer { margin-top: 20px; text-align: center; font-size: 12px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Your {{companyName}} Purchase Receipt</h2>
+        </div>
+        <p>Dear {{userName}},</p>
+        <p>Thank you for your purchase from {{companyName}}! Below are the details of your transaction.</p>
+        
+        <div class="order-summary">
+            <h3>Order Summary</h3>
+            <strong>Order ID:</strong> {{orderID}}<br>
+            <strong>Order Date:</strong> {{orderDate}}<br>
+            <strong>Payment Method:</strong>{{paymentMethod}}<br>
+            <table>
+                <tr>
+                    <th>Item Description</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+                <tr>
+                    <td>{{Product Name 1}}</td>
+                    <td>{{Qty}}</td>
+                    <td>${{XX}}</td>
+                    <td>${{XX}}</td>
+                </tr>
+                <tr>
+                    <td>{{Product Name 2}}</td>
+                    <td>{{Qty}}</td>
+                    <td>${{XX}}</td>
+                    <td>${{XX}}</td>
+                </tr>
+                <!-- Add more products as needed -->
+                <tr>
+                    <td colspan="3" style="text-align:right;"><strong>Subtotal</strong></td>
+                    <td>${{XX}}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align:right;"><strong>Tax</strong></td>
+                    <td>${{XX}}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align:right;"><strong>Shipping</strong></td>
+                    <td>${{XX}}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align:right;"><strong>Total</strong></td>
+                    <td>${{XX}}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <p><strong>Shipping Information:</strong><br>
+        Recipient: {{userName}}<br>
+        Address: {{shippingAddress}}<br>
+        Estimated Delivery: {{deliveryDate}}</p>
+        
+        <p>If you have any questions or concerns about your order, please don't hesitate to contact us at {{supportLink}}.</p>
+        
+        <div class="footer">
+            Thank you for choosing {{companyName}}.<br>
+            {{companyName}} | {{contactInfo}}
+        </div>
+    </div>
+</body>
+</html>

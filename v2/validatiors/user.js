@@ -6,31 +6,35 @@ const userValidations = {
         name: {
             in: ['body'],
             isString: true,
-            notEmpty: true
+        },
+        phone: {
+            in: ['body'],
+            isString: true,
+            // isMobileNumber: true
         },
         email: {
             in: ['body'],
             isString: true,
-            isEmail: true
+            isEmail: true,
+            errorMessage: 'Email is required'
         },
         message: {
             in: ['body'],
             isString: true,
-            notEmpty: true
         },
     }),
 
-    validateGetUsers: async (req, res, next) => {
-        const my_details = req.user;
+    // validateGetUsers: async (req, res, next) => {
+    //     const my_details = req.user;
 
-        try {
-            if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Only admin can access this' })
+    //     try {
+    //         if (my_details.userType !== 'admin') return res.status(403).json({ msg: 'Only admin can access this' })
 
-            return next()
-        } catch (error) {
-            return res.status(500).json({ msg: 'Server error', err: err.message })
-        }
-    },
+    //         return next()
+    //     } catch (error) {
+    //         return res.status(500).json({ msg: 'Server error', err: err.message })
+    //     }
+    // },
 
     validateViewUser: Validator.validate({
         id: {
@@ -38,10 +42,6 @@ const userValidations = {
             isString: true,
             custom: {
                 options: async (id, { req }) => {
-                    const user = req.user;
-
-                    if (user.userType !== 'admin') throw new Error('UnAuthorized! Only Admin can access this');
-
                     const us = await userDBValidator.isUser({ _id: id });
 
                     if (!us) throw new Error('User does not exist');

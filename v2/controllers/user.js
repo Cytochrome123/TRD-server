@@ -2,16 +2,22 @@ const { indexDB } = require("../db/adapters");
 const { userDB } = require("../db/adapters/user");
 
 const User = require('../db/models/user');
+const Enrollment = require('../db/models/enrollment')
+const { success, serverError, successAction } = require("../utils/api_response");
+const { SG_sendMail } = require("../utils/mailer/mail");
 
 const user = {
     getMe: async (req, res) => {
         try {
             const { id } = req.user;
-            console.log(id)
+            console.log(id);
+
             const projection = { email: 1, courses: 1, firstName: 1, lastName: 1, phoneNumber: 1, userType: 1 };
             const option = { lean: true };
+            const meee = await userDB.findUser({_id: id}, projection, option);
+
             const populateOptions = {
-                path: 'courses.courseID',
+                path: 'course_id',
                 select: 'title description start_end end_date instructors duration location courseType createdDate, image, capacity',
     
                 populate: {
@@ -23,26 +29,30 @@ const user = {
                 model: 'Course'
             };
 
-            // const user = await userDB.findUser({ _id: id }, projection, option)
-            // console.log(user, 'USER')
-            // const data = await indexDB.populateData(user, populateOptions);
-            const data = await userDB.populateData({ _id: id }, projection, option, populateOptions);
+            const courses = await indexDB.findAndPopulateData(Enrollment, { user_id: id }, {}, option, populateOptions);
 
-            res.status(200).json({ msg: 'My Data!!', details: data });
+            const me = {
+                ...meee,
+                enrolled_courses: courses
+            }
+
+            return success(res, me);
         } catch (error) {
-            return res.status(500).json({ msg: 'Server error', err: error.message })
+            return serverError(res);
         }
     },
 
     contact: async (req, res) => {
         try {
-            const { name, email, message } = req.body;
+            const { name, email, phone, message } = req.body;
 
-            const msg = await userDB.contact(name, email, message)
+            // const msg = await userDB.contact(name, email, message)
+            SG_sendMail({ to: process.env.SUPPORT_MAIL, type: 'html', subject: 'Support Ticket', content: `<p>${message}</p> <p>Sender Name: ${name}</p> <p>Sender Email: ${email}</p>  <p>Sender Phone: ${phone}</p>` });
 
-            return res.status(201).json({ msg: 'Mail sent' })
+            return successAction(res)
         } catch (error) {
-            return res.status(500).json({ msg: 'Server error', err: error.message })
+            console.log(error);
+            return serverError(res);
         }
     },
 
@@ -58,9 +68,11 @@ const user = {
 
             const users = await indexDB.aggregateData(User, aggregatePipeline, options)
 
-            return res.status(200).json({ msg: 'All users compiled sucessfully', users })
+            return success(res, users);
+            // return res.status(200).json({ msg: 'All users compiled sucessfully', users })
         } catch (error) {
-            return res.status(500).json({ msg: 'Server error', error: error.message })
+            return serverError(res, error.message);
+            // return res.status(500).json({ msg: 'Server error', error: error.message })
         }
     },
 
@@ -82,11 +94,13 @@ const user = {
             const projection = { password: 0 };
             const option = { lean: true };
 
-            const instructors = await userDB.findUser(condition, projection, option);
+            const instructors = await userDB.find(condition, projection, option);
 
-            return res.status(200).json({ msg: `Instructors compilled`, instructors });
+            // return res.status(200).json({ msg: `Instructors compilled`, instructors });
+            return success(res, instructors)
         } catch (error) {
-            return res.status(500).json({ msg: 'Server error', error: error.message })
+            return serverError(res);
+            // return res.status(500).json({ msg: 'Server error', error: error.message })
         }
     },
 
@@ -109,11 +123,13 @@ const user = {
             const projection = { password: 0 };
             const option = { lean: true };
 
-            const students = await userDB.findUser(condition, projection, option)
+            const students = await userDB.find(condition, projection, option)
 
-            return res.status(200).json({ msg: `Students compilled`, students });
+            // return res.status(200).json({ msg: `Students compilled`, students });
+            return success(res, students)
         } catch (error) {
-            return res.status(500).json({ msg: 'Server error', error: error.message })
+            // return res.status(500).json({ msg: 'Server error', error: error.message })
+            return serverError(res);
         }
     },
 
@@ -134,12 +150,15 @@ const user = {
                 model: 'Course'
             };
 
-            const std = await userDB.findUser({ _id: id });
-            const student = await indexDB.populateData(std, populateOptions);
+            const student = await userDB.findUser({ _id: id });
+            // const student = await indexDB.populateData(std, populateOptions);
 
-            return res.status(200).json({ msg: `${student.firstName}'s details`, student });
+            // return res.status(200).json({ msg: `${student.firstName}'s details`, student });
+            return success(res, student, `${student.firstName}'s details`)
         } catch (error) {
-            return res.status(500).json({ msg: 'Server error', error: error.message })
+            console.log(error);
+            // return res.status(500).json({ msg: 'Server error', error: error.message })
+            return serverError(res);
         }
     },
 

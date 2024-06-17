@@ -1,8 +1,16 @@
 const User = require('../models/user');
 
 const authDB = {
-    registerUser: async (userDetails) => {
+    registerUser: async (userDetails, buffer, mimetype) => {
         try {
+            // const userObj = {
+            //     ...userDetails,
+            //     image: {
+            //         image: buffer,
+            //         mimetype
+            //     },
+            //     // img: buffer.toString('base64')
+            // }
             const user = await new User(userDetails).save()
 
             return user;

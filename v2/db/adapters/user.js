@@ -12,9 +12,19 @@ const userDB = {
         }
     },
 
+    find: async (condition, projection = {}, options = {}) => {
+        try {
+            const user = await User.find(condition, projection, options);
+
+            return user;
+        } catch (error) {
+            throw error;
+        }
+    },
+
     contact: async (name, email, message) => {
         try {
-            const message = await new Message({ name, email, message })
+            const message = await new Message({ name, email, message }).save()
 
             return message
         } catch (error) {
@@ -24,7 +34,7 @@ const userDB = {
 
     deleteUser: async (condition) => {
         try {
-            const user = User.findOneAndDelete(condition, { new: true, lean: true })
+            const user = await User.findOneAndDelete(condition, { new: true, lean: true })
 
             return user;
         } catch (error) {
@@ -44,7 +54,7 @@ const userDB = {
 
     populateData: async(query, projection, options, populateOptiions) => {
         // return model.populate(populateOptiions).exec()
-        return User
+        return await User
 			.find(query, projection, options)
 			.populate(populateOptiions)
 			.exec();

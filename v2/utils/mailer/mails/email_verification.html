@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .content {
+            font-size: 16px;
+            color: #444;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: #007bff;
+            color: #ffffff;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            Email Verification Needed
+        </div>
+        <div class="content">
+            Hi {{userName}},
+            <br><br>
+            Thanks for signing up with {{companyName}}! Before we get started, we just need to confirm
+            that this is you. Click below to verify your email address:
+            <br><br>
+            <a href="{{verificationLink}}" class="btn">Verify Your Email</a>
+            <br><br>
+            If you didn’t ask to verify this address, you can ignore this email.
+            <br><br>
+            Thanks,
+            <br>
+            {{companyName}} Team
+        </div>
+        <div class="footer">
+            This is an automated message, please do not reply directly to this email. If you need help or have any
+            questions, please visit {{supportLink}}.
+        </div>
+    </div>
+</body>

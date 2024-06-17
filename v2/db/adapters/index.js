@@ -24,12 +24,28 @@ const indexDB = {
         }
     },
 
-    aggregateData: async(model, pipeline, options = {}) => {
-        return model.aggregate(pipeline, options);
+    create: async (model, data) => {
+        // return await model.create(data)
+        return await new model(data).save();
     },
 
-    populateData: async(model, populateOptiions) => {
-        return model.populate(populateOptiions).exec()
+    findAll: async (model, query, projection = {}, options = {}) => {
+        return await model.find(query, projection, options);
+    },
+
+    aggregateData: async(model, pipeline, options = {}) => {
+        return await model.aggregate(pipeline, options);
+    },
+
+    // populateData: async(model, populateOptiions) => {
+    //     return model.populate(populateOptiions).exec()
+    // },
+
+    findAndPopulateData: async(model, query, projection, options, populateOptiions) => {
+        return model
+			.find(query, projection, options)
+			.populate(populateOptiions)
+			.exec();
     },
 }
 

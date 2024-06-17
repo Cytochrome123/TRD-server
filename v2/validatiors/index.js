@@ -1,4 +1,5 @@
 const { checkSchema, validationResult } = require('express-validator');
+const { badRequest } = require('../utils/api_response');
 
 
 const Validator = {
@@ -11,8 +12,8 @@ const Validator = {
 
         const errs = errors.array();
 
-        return res.status(500).json({ msg: errs[0].msg, errors: errs })
-        // return badRequest(res, errs, errs[0].msg)
+        // return res.status(500).json({ msg: errs[0].msg, errors: errs })
+        return badRequest(res, errs, errs[0].msg)
     }
 }
 

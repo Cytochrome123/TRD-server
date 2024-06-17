@@ -104,6 +104,15 @@ const { GridFsStorage } = require('multer-gridfs-storage');
 const crypto = require('crypto');
 const path = require('path');
 const mongoose = require('mongoose');
+const { indexDB } = require('../db/adapters');
+const { maxSizeExceeded, badRequest, serverError } = require('./api_response');
+
+// const createGfs = () => {
+const gfs = () => {
+    return new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+        bucketName: 'uploads',
+    });
+}
 
 class GridFsConfig {
     static async createStorage() {
@@ -112,6 +121,7 @@ class GridFsConfig {
             options: { useUnifiedTopology: true },
             file: (req, file) => {
                 console.log(file, 'initial')
+                if (!file) throw new Error('Please upload the tenants file')
                 return new Promise((resolve, reject) => {
                     crypto.randomBytes(16, (err, buf) => {
                         if (err) {
@@ -133,8 +143,8 @@ class GridFsConfig {
     static async createMulterUpload() {
         return multer({
             storage: await GridFsConfig.createStorage(),
-            limits: { fileSize: 20000000 }, // 20MB limit
-            // limits: { fileSize: 800 * 1024 },
+            // limits: { fileSize: 20000000 }, // 20MB limit
+            // limits: { fileSize: 500 * 1024 },
             fileFilter: (req, file, cb) => {
                 GridFsConfig.checkFileType(file, cb);
             }
@@ -164,30 +174,38 @@ class GridFsConfig {
             // upload(req, res, (err) => {
             const upload = await GridFsConfig.createMulterUpload();
             const multerMiddleware = upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
-            multerMiddleware(req, res, (err) => {
-                console.log(err, 'ERRTT')
-                if (err instanceof multer.MulterError) {
-                    console.log(err, 'ERRTTTUIOOO')
-                    if (err.code === 'LIMIT_FILE_SIZE') {
-                        return res.status(400).send('File size limit exceeded. Maximum allowed size is 800KB.');
+
+            multerMiddleware(req, res, async (err) => {
+                try {
+                    console.log(err, 'ERRTT', req.files);
+                    const files = req.files;
+
+                    if (files?.image[0]?.size > 500 * 1024) {
+                        const del = await indexDB.deleteImage(res, gfs(), files.image[0].id);
+                        // if (del) throw new Error(`${del} \n\n File shld not exceed 5mb`);
+                        return maxSizeExceeded(res, null, 'File size cannot be more than 500KB.')
+                    };
+
+                    if (err instanceof multer.MulterError) {
+                        console.log(err, 'ERRTTTUIOOO')
+                        if (err.code === 'LIMIT_FILE_SIZE') {
+                            return maxSizeExceeded(res, null, 'File size limit exceeded. Maximum allowed size is 500KB.')
+                        }
+                        return badRequest(res, null, `Multer error: ${err.message}`)
+                    } else if (err) {
+                        return badRequest(res, null, err.message)
                     }
-                    return res.status(400).send(`Multer error: ${err.message}`);
-                } else if (err) {
-                    return res.status(400).send(err.message);
+
+                    next();
+                } catch (error) {
+                    throw error;
                 }
-                next();
             });
         } catch (error) {
-            res.status(500).send(`Error setting up file upload: ${error.message}`);
+            return serverError(res, `Error setting up file upload: ${error.message}`)
         }
     }
 }
 
-// const createGfs = () => {
-const gfs = () => {
-    return new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-        bucketName: 'uploads',
-    });
-}
 
 module.exports = { GridFsConfig, gfs };

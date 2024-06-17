@@ -9,11 +9,14 @@ const axios = require('axios');
 const multer = require('multer')
 
 require('./db')
+// require('./utils/googleapis/auth')
 
-const indexRoute = require('./routes');
+
+const indexRoutes = require('./routes');
 const authRoutes = require('./routes/auth')
 const userRoutes = require('./routes/user')
-const courseRoutes = require('./routes/course')
+const courseRoutes = require('./routes/course');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -49,10 +52,11 @@ app.use(cors({
 // }))
 
 
-app.use('/api/v2', indexRoute)
+app.use('/api/v2', indexRoutes)
 app.use('/api/v2/auth', authRoutes)
 app.use('/api/v2', userRoutes)
 app.use('/api/v2', courseRoutes)
+app.use('/api/v2/admin', adminRoutes)
 
 app.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {

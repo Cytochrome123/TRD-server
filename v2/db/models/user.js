@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const userTypeEnum = [ 'admin', 'instructor', 'student', 'user' ];
-const progressEnum = [ 'Not-started', 'In-progress', 'Completed', ];
 
 const userSchema = new mongoose.Schema({
 	image: {
@@ -14,13 +13,9 @@ const userSchema = new mongoose.Schema({
 	password: { type: String, required: [true, 'Password required'] , default: null },
 	phoneNumber: { type: String, required: true },
 	userType: { type: String, required: true, enum: userTypeEnum, default: 'user' },
-	OTP: String,
-	resetToken: String,
-	resetTokenExpiration: String,
-	courses: [{
-        courseID: { type: mongoose.Types.ObjectId, ref: 'Course' },
-		progress: { type: String, enum: progressEnum, default: 'Not-started' }
-    }],
+	verification_code: String,
+	is_verified: { type: Boolean, required: true, default: false },
+	password_otp: String,
 	createdDate: { type: Number, default: Date.now },
 	lastLogin: { type: Number, default: null },
 });

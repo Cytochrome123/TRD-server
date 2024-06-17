@@ -426,7 +426,7 @@ app.patch('/api/admin/course/:id/assign', authenticate, async (req, res) => {
     }
 });
 
-app.put('/api/admin/course/:id/status', authenticate, async (req, res, next) => { // yet
+app.patch('/api/admin/course/:id/status', authenticate, async (req, res, next) => { // yet
     try {
         const my_details = req.user;
         const { id } = req.params;
@@ -694,7 +694,7 @@ app.delete('/api/admin/user/:id/delete', authenticate, async (req, res) => {
     }
 });
 
-app.get('/api/assigned-courses', authenticate, async (req, res) => {
+app.get('/api/admin/assigned-courses', authenticate, async (req, res) => {
     try {
         const my_details = req.user;
         console.log(my_details)

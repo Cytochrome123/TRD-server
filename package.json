@@ -5,8 +5,8 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app.js",
-    "dev": "nodemon --trace-warnings app.js"
+    "start": "node v2/app.js",
+    "dev": "nodemon --trace-warnings v2/app.js"
   },
   "author": "Hud",
   "license": "ISC",
