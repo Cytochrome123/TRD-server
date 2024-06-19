@@ -22,6 +22,7 @@ const course = {
             return success(res, courses, 'Courses loaded');
             // return res.status(200).json({ msg: 'Courses loaded', courses })
         } catch (error) {
+            console.log(error);
             return serverError(res);
             // return res.status(500).json({ msg: 'Server error', err: error.message })
         }

@@ -27,6 +27,7 @@ const courseSchema = new mongoose.Schema({
     deadline: { type: Date },
     enrollment_count: { type: Number, default: 0 },
     isModuleZero: { type: Boolean, required: true, default: false },
+    featured: Boolean,
     createdDate: { type: Number, default: Date.now },
 });
 

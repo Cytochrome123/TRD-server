@@ -6,3 +6,5 @@ rough
 *.rest
 credential.json
 *.zip
+
+/v2/db/seed/images

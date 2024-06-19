@@ -157,7 +157,7 @@ class GridFsConfig {
             return cb(null, false);
         }
 
-        const filetypes = /jpeg|jpg|png|mp4/;
+        const filetypes = /jpeg|jpg|png/;
         const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = filetypes.test(file.mimetype);
 
@@ -198,7 +198,7 @@ class GridFsConfig {
 
                     next();
                 } catch (error) {
-                    throw error;
+                    return badRequest(res, null);
                 }
             });
         } catch (error) {
