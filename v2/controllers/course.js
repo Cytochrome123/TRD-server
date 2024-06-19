@@ -261,7 +261,7 @@ const course = {
 
             const register = await indexDB.create(Enrollment, { user_id: id, course_id: course_id })
 
-            await courseDB.updateCourse({ _id: course_id }, { enrollment_count: course.enrollment_count++ }, { new: true })
+            await courseDB.updateCourse({ _id: course_id }, { enrollment_count: ++course.enrollment_count }, { new: true })
 
             if (userType == 'user') {
                 // const updatedUser = await User.findByIdAndUpdate(id, { userType: 'student' }, { new: true });
