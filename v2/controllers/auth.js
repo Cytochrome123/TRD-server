@@ -64,7 +64,7 @@ const auth = {
             const { email } = req.body;
             const user = await userDB.findUser({ email });
 
-            const token = jwt.sign({ id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, userType: user.userType }, process.env.ACCESS_TOKEN_SECRET);
+            const token = jwt.sign({ id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, userType: user.userType, image: user.image.path }, process.env.ACCESS_TOKEN_SECRET);
 
             return success(res, { token, user }, "Logged in successfully");
         } catch (error) {

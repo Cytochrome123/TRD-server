@@ -7,4 +7,5 @@ rough
 credential.json
 *.zip
 
-/v2/db/seed/images
+v2/db/seed
+# /v2/db/seed/images
