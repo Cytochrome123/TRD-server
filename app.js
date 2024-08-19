@@ -877,7 +877,7 @@ console.log(attempt, 'attempt')
 
         console.log(registered, 'registered');
 
-        if (registered && !eligible) throw new Error('You\'ve enrolledd for this before');
+        if (registered && !eligible) throw new Error('Sorry, you\'ve enrolledd for this before');
 
         const register = await new Enrollment({ user_id: my_details.id, course_id: course._id }).save();
         if (!register) throw new Error('Enrollment failed');

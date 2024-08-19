@@ -1,5 +1,8 @@
-const { serverError } = require("../utils/api_response");
+const { serverError, success } = require("../utils/api_response");
 const { gfs } = require("../utils/gridfs");
+const User = require('../db/models/user');
+const Course = require('../db/models/course');
+const Quiz = require('../db/models/quiz');
 
 const router = require("express").Router();
 
@@ -64,6 +67,34 @@ router.get('/file/:filename', async (req, res) => {
         return serverError(res);
     }
 });
+
+router.get('/search', async (req, res) => {
+    const query = req.query.q;
+    
+    if (!query) {
+      return res.status(400).json({ message: 'Query is required' });
+    }
+    
+    try {
+      const courses = await Course.find({ title: new RegExp(query, 'i') }).lean();
+      const users = await User.find({ firstName: new RegExp(query, 'i') }).lean();
+      const quiz = await Quiz.find({ name: new RegExp(query, 'i') }).lean();
+
+      for(let course of courses) course.md = 'course'
+      for(let user of users) user['md'] = 'user'
+      for(let qz of quiz) qz['md'] = 'quiz'
+
+      const data = [
+        ...courses,
+        ...users,
+        ...quiz
+      ]
+  
+      return success(res, data);
+    } catch (error) {
+      return serverError(res);
+    }
+  })
 
 
 module.exports = router;

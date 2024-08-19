@@ -38,7 +38,7 @@ const auth = {
             console.log(verification_link)
 
             // return res.json({ status: 201, msg: 'Account created!, kindy check your email to verify your acount', user });
-            return success(res, user, 'Account created!, kindy check your email to verify your acount');
+            return success(res, user, `Account created!, kindy check your email to verify your acount. Make sure to check the spam folder if you can't find in your inbox`);
         } catch (error) {
             // return res.status(500).json({ msg: 'Server error', err: error.message });
             return serverError(res, error.message);

@@ -12,7 +12,8 @@ const courseSchema = new mongoose.Schema({
     },
 	title: { type: String, required: true },
     description: { type: String, required: true },
-    category: { type: String, default: 'I.C.T' },
+    // category: { type: String, default: 'I.C.T' },
+    tags: Array,
     instructors: [ {
         instructor: { type: mongoose.Types.ObjectId, ref: 'User' }
     } ],

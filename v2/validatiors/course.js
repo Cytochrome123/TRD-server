@@ -50,6 +50,12 @@ const courseValidations = {
             isString: true,
             optional: true,
         },
+        tags: {
+            in: 'body',
+            isArray: true,
+            optional: true,
+            notEmpty: true
+        },
         duration: {
             in: ['body'],
             isString: true

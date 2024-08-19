@@ -11,7 +11,6 @@ const multer = require('multer')
 require('./db')
 // require('./utils/googleapis/auth')
 
-
 const indexRoutes = require('./routes');
 const authRoutes = require('./routes/auth')
 const userRoutes = require('./routes/user')
@@ -38,11 +37,11 @@ app.use(express.json());
 // app.use(multerMiddleware.none());
 // app.use(cors());
 app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    credentials: true, // allow session cookie from browser to pass through
-    optionsSuccessStatus: 200,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Origin']
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  credentials: true, // allow session cookie from browser to pass through
+  optionsSuccessStatus: 200,
+  allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Origin']
 }));
 // app.use(session({
 //     secret: 'TRD',
@@ -59,16 +58,16 @@ app.use('/api/v2', courseRoutes)
 app.use('/api/v2/admin', adminRoutes)
 
 app.use((err, req, res, next) => {
-    if (err instanceof multer.MulterError) {
-      // Multer error handling
-      return res.status(400).json({ error: 'MulterError', message: err.message });
-    }
-    // Other types of errors
-    next(err);
-  });
-                    
+  if (err instanceof multer.MulterError) {
+    // Multer error handling
+    return res.status(400).json({ error: 'MulterError', message: err.message });
+  }
+  // Other types of errors
+  next(err);
+});
+
 
 app.listen(process.env.PORT || 5001, err => {
-    if (err) console.log(err);
-    else console.log('TRD V2 upppp!!!')
+  if (err) console.log(err);
+  else console.log('TRD V2 upppp!!!')
 });
