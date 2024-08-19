@@ -300,7 +300,7 @@ const course = {
 
         } catch (error) {
             console.log(error);
-            if (error.code == 11000) return serverError(res, 'Enrolledd for this before')
+            if (error.code == 11000) return serverError(res, `You've enrolledd to this before`)
             return serverError(res)
         }
     },

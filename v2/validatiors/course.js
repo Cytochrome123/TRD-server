@@ -299,7 +299,7 @@ const courseValidations = {
 
                     console.log(registered, 'registered');
 
-                    if (registered && !eligible) throw new Error('You\'ve enrolledd for this before');
+                    if (registered && !eligible) throw new Error('You\'ve enrolledd to this before');
 
                     if (course.status !== 'application') throw new Error('Sorry this course is not open for application at the moment. Kindly check back later')
 
